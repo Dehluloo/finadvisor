@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Фінансовий радник</title>
+<meta name="theme-color" content="#0b0f17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Радник">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <img src="icons/icon-192.png" alt="" class="logo">
+    <div>
+      <div class="name">Фінансовий радник</div>
+      <div class="sub" id="status">Завантаження…</div>
+    </div>
+  </div>
+  <button class="btn primary" id="refresh" title="Оновити всі дані">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    <span>Оновити</span>
+  </button>
+</header>
+
+<main class="wrap">
+
+  <section class="card hero" id="hero">
+    <div class="hero-light" id="hero-light"></div>
+    <div class="hero-body">
+      <div class="eyebrow" id="hero-date">Щоденний бриф</div>
+      <h1 id="hero-signal">—</h1>
+      <p id="hero-summary" class="lead"></p>
+      <div class="chips" id="hero-chips"></div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-chart" data-collapse>
+    <div class="head">
+      <h2>Графік: <span id="chart-name">—</span></h2>
+      <div class="price-line">
+        <span class="big" id="chart-price">—</span>
+        <span class="pill" id="chart-chg">—</span>
+        <span class="muted small" id="chart-hl"></span>
+      </div>
+    </div>
+    <div class="toolbar">
+      <select id="asset-select" aria-label="Актив"></select>
+      <div class="seg" id="tf-seg" role="group" aria-label="Інтервал">
+        <button data-tf="5m">5хв</button><button data-tf="15m">15хв</button><button data-tf="1h">1г</button><button data-tf="4h">4г</button>
+        <button data-tf="1M">1М</button><button data-tf="2M">2М</button><button data-tf="3M">3М</button><button data-tf="6M">6М</button>
+      </div>
+    </div>
+    <div class="chart" id="chart"></div>
+    <div class="muted small" id="chart-note"></div>
+  </section>
+
+  <section class="card" id="sec-watch" data-collapse>
+    <div class="head"><h2>Ринок зараз</h2><span class="muted small">Натисніть на актив, щоб відкрити графік</span></div>
+    <h3 class="group">Криптовалюти</h3>
+    <div class="grid" id="watch-crypto"></div>
+    <h3 class="group">Фондовий ринок і золото</h3>
+    <div class="grid" id="watch-stocks"></div>
+  </section>
+
+  <div class="two">
+    <section class="card" id="sec-fng" data-collapse>
+      <div class="head"><h2>Індекс страху й жадібності</h2></div>
+      <div class="fng">
+        <svg viewBox="0 0 200 120" class="gauge" id="fng-gauge" aria-label="Індекс страху"></svg>
+        <div class="fng-text">
+          <div class="big" id="fng-val">—</div>
+          <div id="fng-label">—</div>
+          <div class="muted small" id="fng-prev"></div>
+        </div>
+      </div>
+      <div class="spark-wide" id="fng-hist"></div>
+      <p class="muted small">0 — паніка, 100 — ейфорія. Сильний страх часто буває біля дна, але не гарантує розвороту.</p>
+    </section>
+
+    <section class="card" id="sec-auto" data-collapse>
+      <div class="head"><h2>Авто-сигнал (за правилами)</h2></div>
+      <div class="auto" id="auto"></div>
+      <p class="muted small">Рахується застосунком самостійно з ціни Bitcoin і індексу страху. Це орієнтир, а не порада купувати чи продавати.</p>
+    </section>
+  </div>
+
+  <section class="card" id="sec-lights" data-collapse>
+    <div class="head"><h2>Світлофор ризику</h2><span class="muted small">з ранкового брифу</span></div>
+    <div class="lights" id="lights"></div>
+  </section>
+
+  <section class="card" id="sec-plain" data-collapse>
+    <div class="head"><h2>Простими словами</h2></div>
+    <div class="plain" id="plain"></div>
+  </section>
+
+  <section class="card" id="sec-news" data-collapse>
+    <div class="head"><h2>Новини, що рухають ринок</h2>
+      <div class="seg small" id="news-seg"><button data-f="all" class="on">Усі</button><button data-f="Bullish">Бичачі</button><button data-f="Bearish">Ведмежі</button></div>
+    </div>
+    <div class="news" id="news"></div>
+  </section>
+
+  <div class="two">
+    <section class="card" id="sec-cal" data-collapse>
+      <div class="head"><h2>Календар подій</h2></div>
+      <ol class="timeline" id="calendar"></ol>
+    </section>
+    <section class="card" id="sec-outlook" data-collapse>
+      <div class="head"><h2>Прогноз за напрямками</h2></div>
+      <div id="outlook"></div>
+    </section>
+  </div>
+
+  <section class="card" id="sec-weekly" data-collapse>
+    <div class="head"><h2>Огляд тижня <span class="muted" id="week"></span></h2></div>
+    <div class="weekly" id="weekly"></div>
+  </section>
+
+  <section class="card" id="sec-portfolio" data-collapse data-closed>
+    <div class="head"><h2>Мій портфель</h2><span class="muted small">зберігається лише на цьому пристрої</span></div>
+    <form class="pf-form" id="pf-form">
+      <select id="pf-asset" aria-label="Актив"></select>
+      <input id="pf-amount" type="number" step="any" min="0" placeholder="Кількість" required>
+      <button class="btn primary" type="submit">Додати</button>
+    </form>
+    <div class="pf-total"><div><div class="muted small">Разом</div><div class="big" id="pf-total">$0</div></div><div><div class="muted small">Частка крипти</div><div class="big" id="pf-crypto">—</div></div></div>
+    <table class="tbl"><thead><tr><th>Актив</th><th>Кількість</th><th>Ціна</th><th>Вартість</th><th>24г</th><th></th></tr></thead><tbody id="pf-rows"></tbody></table>
+  </section>
+
+  <section class="card" id="sec-tips" data-collapse>
+    <div class="head"><h2>Як діють обережні інвестори</h2></div>
+    <ul class="tips" id="tips"></ul>
+  </section>
+
+  <footer class="foot muted small">
+    Ціни — Crypto.com Exchange (резерв: Binance, OKX), індекс страху — Alternative.me. Аналітика — щоденний бриф Claude.
+    Акції й золото показані як безстрокові контракти (PERP) на Crypto.com: вони йдуть за ціною акції, але торгуються майже цілодобово.
+    Це інформація, а не індивідуальна фінансова порада. <span id="ver"></span>
+  </footer>
+</main>
+
+<div class="tip" id="tip" hidden></div>
+<script src="data/brief.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
