@@ -1,0 +1,27 @@
+name: Живі новини
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: live
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Зібрати новини й дані
+        run: python3 tools/fetch_live.py
+      - name: Зберегти
+        run: |
+          git config user.name "finadvisor-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/live.json
+          if git diff --cached --quiet; then echo "без змін"; exit 0; fi
+          git commit -m "Живі дані $(date -u +%H:%M)"
+          git pull --rebase -X theirs origin main || true
+          git push
