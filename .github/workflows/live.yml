@@ -1,7 +1,7 @@
 name: Живі новини
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
@@ -11,19 +11,29 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
-      - name: Зібрати новини й дані
+      - name: Гілка live (дані щохвилини, без перебудови сайту)
+        run: |
+          git config --global user.name "finadvisor-bot"
+          git config --global user.email "actions@users.noreply.github.com"
+          if git clone -q --depth 1 --branch live "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" live-dir; then
+            echo "live branch ok"
+          else
+            mkdir live-dir && cd live-dir && git init -q -b live
+            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+            for f in live.json tg.json tr_cache.json brief_en.json; do [ -f ../data/$f ] && cp ../data/$f . || true; done
+            printf 'Живі дані FinRAD. Оновлюються автоматично щохвилини.\n' > README.md
+            git add -A && git commit -q -m live && git push -q -f origin live
+          fi
+      - name: Збирати дані щохвилини (~5 хв)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: python3 tools/fetch_live.py
-      - name: Зберегти
+          LIVE_DIR: live-dir
         run: |
-          git config user.name "finadvisor-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add data/live.json data/tg.json data/tr_cache.json data/brief_en.json
-          if git diff --cached --quiet; then echo "без змін"; exit 0; fi
-          git commit -m "Живі дані $(date -u +%H:%M)"
-          git pull --rebase -X theirs origin main || true
-          git push
+          for i in 1 2 3 4 5; do
+            timeout 80 python3 tools/fetch_live.py || echo "збір не вдався, наступна спроба"
+            (cd live-dir && git add -A && (git commit -q --amend -m "live $(date -u +%H:%M)" || true) && git push -q -f origin live) || echo "push failed"
+            [ $i -lt 5 ] && sleep 45 || true
+          done

@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3.3.0">
 </head>
 <body>
 <header class="top">
@@ -221,6 +221,17 @@
     <div id="alert-list" class="alert-list"></div>
     <p class="muted small" data-i18n="alertNote"></p>
 
+    <h3 class="group" data-i18n="srcTitle">Джерела новин</h3>
+    <p class="muted small" data-i18n="srcNote"></p>
+    <form class="alert-form" id="src-form"><input id="src-in" data-i18n-ph="srcPh" autocomplete="off" style="flex:1;min-width:200px"><button class="btn primary small" type="submit" data-i18n="add">Додати</button></form>
+    <div id="src-list" class="src-list"></div>
+    <details class="tok"><summary data-i18n="srcToken">GitHub-ключ для збереження джерел</summary>
+      <p class="muted small" data-i18n="srcTokenHelp"></p>
+      <div class="alert-form"><input id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" style="flex:1"><button class="btn small" id="gh-save" type="button" data-i18n="save">Зберегти</button></div>
+      <a class="btn small ghost" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" data-i18n="srcTokenLink">Створити ключ на GitHub ↗</a>
+    </details>
+    <div class="muted small" id="src-status"></div>
+
     <h3 class="group" data-i18n="telegram">Telegram</h3>
     <div class="tg" id="tg"></div>
   </div>
@@ -229,7 +240,7 @@
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="tip" id="tip" hidden></div>
 <script src="data/brief.js"></script>
-<script src="i18n.js"></script>
-<script src="app.js"></script>
+<script src="i18n.js?v=3.3.0"></script>
+<script src="app.js?v=3.3.0"></script>
 </body>
 </html>

@@ -4,7 +4,10 @@ import json, re, os, sys, html, hashlib, time, datetime as dt
 import urllib.request, urllib.parse, xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'live.json')
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+LIVE_DIR = os.environ.get('LIVE_DIR') or os.path.join(ROOT, 'data')
+OUT = os.path.join(LIVE_DIR, 'live.json')
+MAIN_DATA = os.path.join(ROOT, 'data')
 UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 finadvisor'
 NOW = dt.datetime.now(dt.timezone.utc)
 KEEP_H = 48
@@ -21,6 +24,18 @@ RSS = [
     ('Federal Reserve', 'https://www.federalreserve.gov/feeds/press_all.xml'),
 ]
 TELEGRAM = ['WatcherGuru', 'cryptocurrency_media', 'Capitalizator_UA', 'tstamarkets_ua', 'trade_ultra']
+
+
+def load_sources():
+    rss, tg = list(RSS), list(TELEGRAM)
+    try:
+        cfg = json.load(open(os.path.join(MAIN_DATA, 'sources.json')))
+    except Exception:
+        cfg = {}
+    off = set(cfg.get('disabled', []))
+    rss = [(n, u) for n, u in rss if n not in off] + [(x.get('name') or x['url'], x['url']) for x in cfg.get('rss', []) if x.get('url') and (x.get('name') or x['url']) not in off]
+    tg = [c for c in tg if c not in off] + [c.lstrip('@') for c in cfg.get('telegram', []) if c and c.lstrip('@') not in off]
+    return rss, list(dict.fromkeys(tg))
 
 BULL = ['surge', 'soar', 'rally', 'jump', ' gains', ' gain ', 'rises', 'rose', 'climb', 'record high', 'all-time high', 'ath', 'approve', 'approval',
         'inflow', 'adopt', 'bullish', 'rate cut', 'cuts rates', 'breakout', 'rebound', 'recover', 'beats', 'upgrade', 'buys',
@@ -99,7 +114,17 @@ def parse_date(s):
 
 def rss(name, url):
     out = []
-    root = ET.fromstring(get(url))
+    raw = get(url)
+    head = raw[:600].lower()
+    if b'<rss' not in head and b'<feed' not in head and b'<?xml' not in head:
+        page = raw.decode('utf-8', 'ignore')
+        m = re.search(r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]*>', page, re.I)
+        h = m and re.search(r'href=["\']([^"\']+)', m.group(0))
+        if not h:
+            raise ValueError('no feed')
+        url = urllib.parse.urljoin(url, html.unescape(h.group(1)))
+        raw = get(url)
+    root = ET.fromstring(raw)
     ns = {'a': 'http://www.w3.org/2005/Atom'}
     entries = root.findall('.//item') or root.findall('.//a:entry', ns)
     for e in entries[:40]:
@@ -168,7 +193,7 @@ def perps():
 
 
 # ---------------- переклад (безкоштовний сервіс, з кешем) ----------------
-TR_CACHE = os.path.join(os.path.dirname(OUT), 'tr_cache.json')
+TR_CACHE = os.path.join(LIVE_DIR, 'tr_cache.json')
 _tr = {}
 _tr_calls = [0]
 TR_LIMIT = 220
@@ -228,8 +253,8 @@ BRIEF_TXT = {'brief': ['summary', 'signal', 'regime', 'data_as_of'], 'posture': 
 
 
 def translate_brief():
-    src = os.path.join(os.path.dirname(OUT), 'brief.json')
-    dst = os.path.join(os.path.dirname(OUT), 'brief_en.json')
+    src = os.path.join(MAIN_DATA, 'brief.json')
+    dst = os.path.join(LIVE_DIR, 'brief_en.json')
     try:
         b = json.load(open(src))
     except Exception:
@@ -272,15 +297,16 @@ def main():
     except Exception:
         pass
     items, errors = [], []
-    for name, url in RSS:
+    rss_list, tg_list = load_sources()
+    for name, url in rss_list:
         try:
             items += rss(name, url)
         except Exception as e:
             errors.append(f'{name}: {type(e).__name__}')
-    for ch in TELEGRAM:
+    for ch in tg_list:
         try:
             items += telegram(ch)
-            time.sleep(1)
+            time.sleep(0.5)
         except Exception as e:
             errors.append(f'tg {ch}: {type(e).__name__}')
     cutoff = NOW - dt.timedelta(hours=KEEP_H)
@@ -306,9 +332,13 @@ def main():
     errors.append(translate_brief())
     keep = dict(list(_tr.items())[-3000:])
     json.dump(keep, open(TR_CACHE, 'w'), ensure_ascii=False, separators=(',', ':'))
-    data = {'updated': NOW.isoformat().replace('+00:00', 'Z'), 'items': uniq[:150], 'errors': errors}
+    data = {'updated': NOW.isoformat().replace('+00:00', 'Z'), 'items': uniq[:150], 'errors': errors, 'sources': {'rss': [n for n, _ in rss_list], 'telegram': tg_list}}
     try:
-        data['calendar'] = calendar()
+        ca = parse_date(prev.get('cal_at'))
+        if ca and NOW - ca < dt.timedelta(minutes=15) and prev.get('calendar'):
+            data['calendar'], data['cal_at'] = prev['calendar'], prev['cal_at']
+        else:
+            data['calendar'] = calendar(); data['cal_at'] = NOW.isoformat().replace('+00:00', 'Z')
     except Exception as e:
         data['calendar'] = prev.get('calendar', []); errors.append(f'calendar: {type(e).__name__}')
     try:
@@ -321,7 +351,7 @@ def main():
 
 
 # ---------------- Telegram (необов'язково) ----------------
-TG_STATE = os.path.join(os.path.dirname(OUT), 'tg.json')
+TG_STATE = os.path.join(LIVE_DIR, 'tg.json')
 HELP = ("🤖 Бот «Фінансовий радник».\n"
         "/on — увімкнути сповіщення\n/off — вимкнути\n/important — лише важливі новини\n/all — усі новини\n"
         "/prices — рухи цін ±5% (увімк./вимк.)\n/events — нагадування про події (увімк./вимк.)\n/status — ціни зараз\n"

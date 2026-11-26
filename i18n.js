@@ -198,3 +198,15 @@ Object.assign(I18N.en, {
 });
 Object.assign(I18N.uk, {less:'Показати менше', favOnly:'Обрані', favTip:'Позначити як обрану (закріпити вгорі)'});
 Object.assign(I18N.en, {less:'Show less', favOnly:'Favourites', favTip:'Mark as favourite (pin to top)'});
+Object.assign(I18N.uk, {updating:'Встановлюю нову версію…', favEmpty:'Ще немає обраних. Натисніть ☆ біля будь-якої монети.',
+  srcTitle:'Джерела новин', srcNote:'Додайте Telegram-канал (@назва або посилання t.me) чи сайт (адреса сайту або RSS). Вимкніть непотрібні. Зміни починають діяти протягом ~1–5 хв.',
+  srcPh:'@WatcherGuru або https://сайт.com', save:'Зберегти', srcToken:'GitHub-ключ для збереження джерел (одноразово)',
+  srcTokenHelp:'Список джерел зберігається у вашому сховищі на GitHub, тому програмі потрібен ключ доступу. На GitHub: Fine-grained token → Repository access: Only select → finadvisor → Permissions: Contents — Read and write → Generate. Скопіюйте ключ сюди. Він зберігається лише на цьому пристрої.',
+  srcTokenLink:'Створити ключ на GitHub ↗', srcSaved:'Збережено ✓ Нові джерела з’являться в стрічці протягом кількох хвилин.', srcErr:'Не вдалося зберегти: ', srcNeedToken:'Щоб зберегти зміни, додайте GitHub-ключ нижче.',
+  srcDef:'стандартне', srcCustom:'ваше', srcBad:'Не схоже на канал чи сайт.', srcOk:'працює', srcFail:'не відповідає', tokenSaved:'Ключ збережено на цьому пристрої.'});
+Object.assign(I18N.en, {updating:'Installing the new version…', favEmpty:'No favourites yet. Tap ☆ next to any coin.',
+  srcTitle:'News sources', srcNote:'Add a Telegram channel (@name or t.me link) or a website (site address or RSS). Turn off ones you do not need. Changes apply within ~1–5 min.',
+  srcPh:'@WatcherGuru or https://site.com', save:'Save', srcToken:'GitHub key to save sources (one-time)',
+  srcTokenHelp:'Your source list is stored in your GitHub repository, so the app needs an access key. On GitHub: Fine-grained token → Repository access: Only select → finadvisor → Permissions: Contents — Read and write → Generate. Paste the key here. It is stored only on this device.',
+  srcTokenLink:'Create a key on GitHub ↗', srcSaved:'Saved ✓ New sources will appear in the feed within a few minutes.', srcErr:'Could not save: ', srcNeedToken:'To save changes, add a GitHub key below.',
+  srcDef:'default', srcCustom:'yours', srcBad:'This does not look like a channel or website.', srcOk:'working', srcFail:'not responding', tokenSaved:'Key saved on this device.'});

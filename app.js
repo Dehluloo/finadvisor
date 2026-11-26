@@ -1,11 +1,12 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.2.0';
+const VERSION = '3.3.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
-const T_TICK = 30e3, T_LIVE = 120e3, T_BRIEF = 30 * 60e3, T_FULL = 4 * 3600e3, T_CHART = 60e3, T_MK = 5 * 60e3, T_LIQ = 5 * 60e3;
+const LIVE = 'https://raw.githubusercontent.com/Dehluloo/finadvisor/live/';
+const T_TICK = 20e3, T_LIVE = 60e3, T_BRIEF = 30 * 60e3, T_FULL = 4 * 3600e3, T_CHART = 60e3, T_MK = 5 * 60e3, T_LIQ = 5 * 60e3;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const store = {
@@ -16,7 +17,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- мова ----------
-let LANG = store.get('lang', /^(uk|ru)/.test(navigator.language || '') ? 'uk' : 'en');
+let LANG = store.get('lang', 'uk');
 const t = (k, v) => { let s = (I18N[LANG] && I18N[LANG][k]) ?? I18N.uk[k] ?? k; if (v) for (const x in v) s = s.replace('{' + x + '}', v[x]); return s; };
 const LOC = () => LANG === 'uk' ? 'uk-UA' : 'en-US';
 function applyI18n() {
@@ -50,7 +51,7 @@ function initDrag() {
   main.addEventListener('pointerdown', e => {
     const hnd = e.target.closest('.drag-h'); if (!hnd) return;
     e.preventDefault(); const sec = hnd.parentElement; drag = sec; sec.classList.add('dragging'); document.body.classList.add('is-dragging');
-    hnd.setPointerCapture(e.pointerId); lastY = e.clientY; raf = requestAnimationFrame(scrollLoop);
+    try { hnd.setPointerCapture(e.pointerId); } catch {} lastY = e.clientY; raf = requestAnimationFrame(scrollLoop);
   });
   main.addEventListener('pointermove', e => {
     if (!drag) return; lastY = e.clientY;
@@ -63,7 +64,7 @@ function initDrag() {
   const end = () => {
     if (!drag) return; drag.classList.remove('dragging'); document.body.classList.remove('is-dragging'); cancelAnimationFrame(raf);
     const on = Object.fromEntries(getLayout().map(s => [s.k, s.on]));
-    store.set('layout', $$('#main > [data-sec]').map(el => ({k: el.dataset.sec, on: on[el.dataset.sec] !== false})));
+    store.set('layout', $$('#main > [data-sec]').map(el => ({k: el.dataset.sec, on: on[el.dataset.sec] !== false}))); pairHalves();
     drag = null; redrawChart(); renderBubbles(); loadLiq();
   };
   main.addEventListener('pointerup', end); main.addEventListener('pointercancel', end);
@@ -224,14 +225,14 @@ const tipEl = $('#tip');
 function showTip(html, x, y) { tipEl.innerHTML = html; tipEl.hidden = false; const w = tipEl.offsetWidth, h = tipEl.offsetHeight; tipEl.style.left = (x + 14 + w > innerWidth ? x - w - 14 : x + 14) + 'px'; tipEl.style.top = clamp(y - 10, 8, innerHeight - h - 8) + 'px'; }
 function hideTip() { tipEl.hidden = true; }
 function drawChart(el, all, show, intra, cmpRows) {
-  if (!all || !all.length) { el.style.height = ''; el.innerHTML = `<div class="empty">${esc(t('noChart'))}</div>`; $('#chart-legend').textContent = ''; return; }
+  if (!all || !all.length) { el.style.height = ''; el.innerHTML = `<div class="empty" style="height:200px">${esc(t('noChart'))}</div>`; $('#chart-legend').textContent = ''; return; }
   const I = state.ind, closes = all.map(r => r.c), off = Math.max(0, all.length - show);
   const cut = (a) => a.slice(off), rows = cut(all);
   const compareMode = !!(cmpRows && cmpRows.length);
   const ser = {ma20: I.ma20 && cut(smaS(closes, 20)), ma50: I.ma50 && cut(smaS(closes, 50)), ema200: I.ema200 && cut(emaS(closes, 200)), bb: I.bb && cut(bbS(closes)), rsi: I.rsi && cut(rsiS(closes)), macd: I.macd && cut(macdS(closes))};
   const panes = compareMode ? 0 : (I.rsi ? 1 : 0) + (I.macd ? 1 : 0);
   const W = el.clientWidth || 600, baseH = innerWidth < 600 ? 280 : 340, H = baseH + panes * 92;
-  el.style.height = H + 'px';
+  el.style.height = '';
   const padL = 6, padR = 66, padT = 10, padB = 22, iw = W - padL - padR, gap = 8, paneH = 84;
   const mainH = H - padT - padB - panes * (paneH + gap);
   const step = iw / rows.length, bw = Math.max(1, Math.min(14, step * 0.68)), x = (i) => padL + step * i + step / 2;
@@ -354,7 +355,7 @@ function renderSince() {
   $('#since-t').textContent = t('sinceText', {t: new Date(snap.ts).toLocaleString(LOC(), {weekday:'short', hour:'2-digit', minute:'2-digit'})});
   $('#since-row').innerHTML = ch.map(([a, c]) => `<div class="sc"><b>${esc(a.tk)}</b><span class="${cls(c)}">${pct(c)}</span></div>`).join('') +
     (fv != null && snap.fng != null ? `<div class="sc"><b>F&amp;G</b><span>${snap.fng} → ${fv}</span></div>` : '') + (imp ? `<div class="sc"><b>⚡</b><span>${t('sinceNews', {n: imp})}</span></div>` : '');
-  sec.hidden = false; sinceShown = true;
+  sec.hidden = false; sinceShown = true; pairHalves();
 }
 
 // ---------- список активів ----------
@@ -368,7 +369,8 @@ function renderWatch() {
   const groups = [['c', t('crypto')], ['s', t('stocks')], ['p', t('perpsGrp')]];
   $('#watch-grid').innerHTML = groups.map(([g, label]) => {
     const as = watchAssets().filter(a => a.g === g); if (!as.length) return '';
-    return `<h3 class="group">${esc(label)}</h3><div class="tiles">` + as.map(a => {
+    const maxC = Math.max(2, Math.floor(($('#watch-grid').clientWidth + 10) / 160)), cols = Math.min(as.length, Math.ceil(as.length / Math.ceil(as.length / maxC)));
+    return `<h3 class="group">${esc(label)}</h3><div class="tiles" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">` + as.map(a => {
       const k = state.tickers[a.id], chg = k ? k.chg : null, color = chg >= 0 ? 'var(--up)' : 'var(--dn)';
       return `<div class="tile${a.id === state.asset ? ' sel' : ''}${state.editWatch ? ' edit' : ''}" data-id="${a.id}" role="button" tabindex="0">
         ${state.editWatch ? `<div class="tile-ed"><button data-mv="-1">‹</button><button data-mv="1">›</button><button data-rm>×</button></div>` : ''}
@@ -478,7 +480,7 @@ function renderMarkets() {
     const ch = G.market_cap_change_percentage_24h_usd;
     $('#mk-stats').innerHTML = [[t('mcap'), moneyBig(G.total_market_cap.usd) + ` <span class="${cls(ch)}">${pct(ch)}</span>`], [t('volume'), moneyBig(G.total_volume.usd)],
       [t('dom') + ' BTC', nf(1).format(G.market_cap_percentage.btc) + '%'], [t('dom') + ' ETH', nf(1).format(G.market_cap_percentage.eth) + '%'], [t('coins'), nf(0).format(G.active_cryptocurrencies)]]
-      .map(([k, v]) => `<div class="st"><div class="muted small">${esc(k)}</div><div class="st-v">${v}</div></div>`).join('');
+      .map(([k, v]) => `<div class="st"><div class="muted small">${esc(k)}</div><div class="st-v">${v}</div></div>`).join(''); balance($('#mk-stats'), 130);
   }
   const coinLine = (c) => { const ch = c.price_change_percentage_24h_in_currency ?? c.chg; return `<div class="ml" data-sym="${esc(c.symbol)}">${c.image ? `<img src="${esc(c.image)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}<b>${esc(c.symbol)}</b><span class="muted nm">${esc(c.name)}</span><span class="r ${cls(ch)}">${pct(ch, 1)}</span></div>`; };
   $('#mk-trend').innerHTML = (state.trend || []).map(coinLine).join('') || '<div class="muted">—</div>';
@@ -496,7 +498,8 @@ function renderMarkets() {
       <td class="r hide-s">${moneyBig(c.market_cap)}</td><td class="r hide-s">${moneyBig(c.total_volume)}</td><td class="hide-s spark7">${sparkSVG(c.spark, up7 ? 'var(--up)' : 'var(--dn)', 28)}</td>
       <td>${cid ? `<button class="addw${inW ? ' on' : ''}" data-star="${cid}" title="${inW ? t('inWatch') : t('addWatch')}">${inW ? '✓' : '+'}</button>` : ''}</td></tr>`;
   }).join('');
-  $('#mk-more').hidden = rows.length <= shown; $('#mk-less').hidden = state.mkN <= 10;
+  if (!rows.length && state.mkFavOnly) $('#mk-rows').innerHTML = `<tr><td colspan="10" class="muted pad">${t('favEmpty')}</td></tr>`;
+  $('#mk-more').hidden = rows.length <= shown; $('#mk-less').hidden = state.mkN <= 10 || state.mkFavOnly;
   $('#mk-favonly').classList.toggle('on', state.mkFavOnly);
   $$('#mk-table th[data-k]').forEach(th => { th.classList.toggle('sorted', th.dataset.k === k); th.dataset.dir = th.dataset.k === k ? (dir > 0 ? '↑' : '↓') : ''; });
 }
@@ -711,22 +714,24 @@ function renderCal() {
     el.innerHTML = legend + `<div class="ecal">${html || `<div class="muted">${t('ecalEmpty')}</div>`}</div>`; return;
   }
   const byDay = {}; for (const e of ev) (byDay[ymd(e.ts)] = byDay[ymd(e.ts)] || []).push(e);
-  const nMonths = (to.getFullYear() - from.getFullYear()) * 12 + to.getMonth() - from.getMonth();
-  state.calMonth = clamp(state.calMonth, 0, nMonths);
-  const m = new Date(from.getFullYear(), from.getMonth() + state.calMonth, 1);
+  const start0 = new Date(from); start0.setDate(start0.getDate() - (start0.getDay() + 6) % 7);
+  const pages = Math.max(0, Math.ceil((to - start0) / (35 * 864e5)) - 1);
+  state.calMonth = clamp(state.calMonth, 0, pages);
+  const ws = new Date(start0); ws.setDate(ws.getDate() + state.calMonth * 35);
+  const we = new Date(ws); we.setDate(we.getDate() + 34);
   const wd = [...Array(7)].map((_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(LOC(), {weekday:'short'}));
-  let html = `<div class="month"><div class="m-nav"><button class="icon-btn sm" data-mnav="-1"${state.calMonth <= 0 ? ' disabled' : ''}>‹</button><div class="m-h">${m.toLocaleDateString(LOC(), {month:'long', year:'numeric'})}</div><button class="icon-btn sm" data-mnav="1"${state.calMonth >= nMonths ? ' disabled' : ''}>›</button></div><div class="m-g">${wd.map(w => `<div class="wd">${w}</div>`).join('')}`;
-  const first = (m.getDay() + 6) % 7, dim = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
-  for (let i = 0; i < first; i++) html += '<div class="dc empty"></div>';
-  for (let d = 1; d <= dim; d++) {
-    const dt = new Date(m.getFullYear(), m.getMonth(), d), key = ymd(dt), es = byDay[key] || [], out = dt < from || dt > to;
-    const chips = es.slice(0, 3).map(e => `<span class="cc" data-ev="${calEvents.indexOf(e)}" style="--c:${KCOL[e.kind]}">${esc(e.title.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').slice(0, 22))}</span>`).join('') + (es.length > 3 ? `<span class="more-n">+${es.length - 3}</span>` : '');
+  const rng = `${ws.toLocaleDateString(LOC(), {day:'numeric', month:'short'})} — ${we.toLocaleDateString(LOC(), {day:'numeric', month:'short', year:'numeric'})}`;
+  let html = `<div class="month"><div class="m-nav"><button class="icon-btn sm" data-mnav="-1"${state.calMonth <= 0 ? ' disabled' : ''}>‹</button><div class="m-h">${rng}</div><button class="icon-btn sm" data-mnav="1"${state.calMonth >= pages ? ' disabled' : ''}>›</button></div><div class="m-g">${wd.map(w => `<div class="wd">${w}</div>`).join('')}`;
+  for (let d = 0; d < 35; d++) {
+    const dt = new Date(ws); dt.setDate(dt.getDate() + d);
+    const key = ymd(dt), es = byDay[key] || [], out = dt < from || dt > to, newMonth = dt.getDate() === 1 || d === 0;
     const dots = `<div class="dots">${es.slice(0, 5).map(e => `<i style="background:${KCOL[e.kind]}"></i>`).join('')}</div>`;
-    html += `<button class="dc${out ? ' out' : ''}${key === ymd(now) ? ' today' : ''}${key === state.calDay ? ' sel' : ''}${es.some(e => e.imp === 'High') ? ' hi' : ''}" data-day="${key}"><span class="dnum">${d}</span>${chips}${dots}</button>`;
+    html += `<button class="dc${out ? ' out' : ''}${key === ymd(now) ? ' today' : ''}${key === state.calDay ? ' sel' : ''}${es.some(e => e.imp === 'High') ? ' hi' : ''}" data-day="${key}"><span class="dnum">${newMonth ? dt.toLocaleDateString(LOC(), {day:'numeric', month:'short'}) : dt.getDate()}</span>${dots}</button>`;
   }
+  const m = {ws, we};
   html += '</div></div>';
   const sel = state.calDay && byDay[state.calDay];
-  const monthEv = ev.filter(e => e.ts.getMonth() === m.getMonth() && e.ts.getFullYear() === m.getFullYear());
+  const monthEv = ev.filter(e => e.ts >= m.ws && e.ts < new Date(m.we.getTime() + 864e5));
   let list = '', lastDay = '';
   for (const e of (sel || monthEv)) { const day = ymd(e.ts); if (day !== lastDay) { list += `<div class="day-h">${e.ts.toLocaleDateString(LOC(), {weekday:'long', day:'numeric', month:'long'})}</div>`; lastDay = day; } list += evRow(e); }
   el.innerHTML = legend + `<div class="cal-split">${html}<div class="day-detail">${list || `<div class="muted small">${t('ecalEmpty')}</div>`}</div></div>`;
@@ -740,12 +745,12 @@ function renderBriefSections() {
   $('#plain').innerHTML = (B.plain || []).slice().sort((a, b) => a.order - b.order).map(p => `<div class="pl"><b>${esc(p.label)}</b><p>${esc(p.text)}</p></div>`).join('');
   renderNews();
   const SC = (s) => /ведм|bear|ризик|risk/i.test(s) ? 'dn' : /бич|bull|сприят|favo/i.test(s) ? 'up' : 'warn';
-  $('#outlook').innerHTML = (B.outlook || []).map(o => `<div class="ol"><div class="oh"><span>${esc(o.area)}</span><span class="st ${SC(o.stance)}">${esc(o.stance)}</span></div><div class="muted">${esc(o.text)}</div></div>`).join('');
+  $('#outlook').innerHTML = (B.outlook || []).map(o => `<div class="ol"><div class="oh"><span>${esc(o.area)}</span><span class="stance ${SC(o.stance)}">${esc(o.stance)}</span></div><div class="muted">${esc(o.text)}</div></div>`).join('');
   const W = (B.weekly || []).slice().sort((a, b) => a.order - b.order);
   $('#week').textContent = W[0] ? W[0].week : '';
   $('#weekly').innerHTML = W.map(w => `<div><b>${esc(w.label)}</b><p>${esc(w.text)}</p></div>`).join('');
   $('#tips').innerHTML = (B.general || []).slice().sort((a, b) => a.order - b.order).map(g => `<li>${esc(g.text)}</li>`).join('');
-  renderCal();
+  renderCal(); requestAnimationFrame(balanceAll);
 }
 const SENT = (s) => ({Bullish:t('bullish'), Bearish:t('bearish'), Neutral:t('neutral'), Mixed:t('mixed')}[s] || s);
 function renderNews() {
@@ -755,8 +760,8 @@ function renderNews() {
 
 // ---------- новини наживо ----------
 function feedItems() {
-  const items = (state.live && state.live.items) || [];
-  return items.filter(i => (state.liveCat === 'all' || (state.liveCat === 'imp' ? i.imp : state.liveCat === 'telegram' ? i.kind === 'telegram' : i.cat === state.liveCat)) && (state.liveSent === 'all' || i.sent === state.liveSent));
+  const items = (state.live && state.live.items) || [], off = new Set(srcCfg.disabled || []);
+  return items.filter(i => !off.has(i.src.replace('Telegram · ', '')) && (state.liveCat === 'all' || (state.liveCat === 'imp' ? i.imp : state.liveCat === 'telegram' ? i.kind === 'telegram' : i.cat === state.liveCat)) && (state.liveSent === 'all' || i.sent === state.liveSent));
 }
 const sameLang = (i) => i.lang === LANG;
 function itemText(i) { const tr = !sameLang(i) && i.t && i.t[LANG]; return tr && !state.showOrig[i.id] ? {title: tr.title, body: tr.body, tr: true} : {title: i.title, body: i.body, tr: false, canTr: !!tr}; }
@@ -818,11 +823,56 @@ function renderSysBtn() {
   const on = Notification.permission === 'granted' && store.get('sysNotif', false); b.textContent = on ? t('enabled') + ' ✓' : t('enable'); b.classList.toggle('primary', !on);
 }
 async function renderTg() {
-  let s = null; try { s = await getJSON(BASE + 'data/tg.json?t=' + Date.now(), 8000); } catch {}
+  let s = null; try { s = await getJSON(LIVE + 'tg.json?t=' + Date.now(), 8000); } catch { try { s = await getJSON(BASE + 'data/tg.json?t=' + Date.now(), 8000); } catch {} }
   const st = !s || !s.configured ? ['off', t('tgOff')] : s.enabled ? ['on', t('tgOn')] : ['pause', t('tgPaused')];
   $('#tg').innerHTML = `<div class="set-row"><span class="tg-st ${st[0]}">● ${esc(st[1])}</span>${s && s.bot ? `<a class="btn small primary" href="https://t.me/${esc(s.bot)}" target="_blank" rel="noopener">${t('tgOpen')} @${esc(s.bot)}</a>` : ''}</div>
     ${s && s.last ? `<div class="muted small">${t('tgLast')}: ${ago(s.last)}</div>` : ''}
     ${!s || !s.configured || !s.chat ? `<div class="tg-steps"><b>${t('tgSteps')}</b><ol><li>${esc(t('tg1'))}</li><li>${esc(t('tg2'))}</li><li>${esc(t('tg3'))}</li></ol><a class="btn small" href="${REPO}/settings/secrets/actions/new" target="_blank" rel="noopener">${t('tgSecretBtn')} ↗</a></div>` : `<div class="muted small">/on · /off · /important · /all · /prices · /events · /status</div>`}`;
+}
+
+// ---------- джерела новин ----------
+const DEF_RSS = ['CoinDesk', 'Cointelegraph', 'Decrypt', 'The Block', 'CNBC', 'CNBC Economy', 'CNBC Finance', 'MarketWatch', 'Federal Reserve'];
+const DEF_TG = ['WatcherGuru', 'cryptocurrency_media', 'Capitalizator_UA', 'tstamarkets_ua', 'trade_ultra'];
+const GH_API = 'https://api.github.com/repos/Dehluloo/finadvisor/contents/data/sources.json';
+let srcCfg = store.get('srcCfg', {rss: [], telegram: [], disabled: []}), srcSha = null;
+async function loadSources() {
+  try { const j = await getJSON('https://raw.githubusercontent.com/Dehluloo/finadvisor/main/data/sources.json?t=' + Date.now(), 8000); if (j && typeof j === 'object') { srcCfg = Object.assign({rss: [], telegram: [], disabled: []}, j); store.set('srcCfg', srcCfg); } } catch {}
+  renderSources();
+}
+function srcStatus(name, kind) {
+  const items = (state.live && state.live.items) || [], label = kind === 'tg' ? 'Telegram · ' + name : name;
+  const errs = ((state.live && state.live.errors) || []).join(' ');
+  if (items.some(i => i.src === label)) return 'ok';
+  if (errs.includes(kind === 'tg' ? 'tg ' + name : name + ':')) return 'fail';
+  return '';
+}
+function renderSources() {
+  const off = new Set(srcCfg.disabled || []);
+  const row = (name, kind, custom, extra) => { const st = srcStatus(name, kind); return `<div class="srcr"><label><input type="checkbox" data-src-on="${esc(name)}"${off.has(name) ? '' : ' checked'}> <span class="src-k">${kind === 'tg' ? '✈︎' : '🌐'}</span> ${esc(kind === 'tg' ? '@' + name : name)}</label><span class="muted small">${extra ? esc(extra) + ' · ' : ''}${custom ? t('srcCustom') : t('srcDef')}${st ? ` · <span class="${st === 'ok' ? 'up' : 'dn'}">${t(st === 'ok' ? 'srcOk' : 'srcFail')}</span>` : ''}</span>${custom ? `<button class="x" data-src-rm="${esc(name)}" data-kind="${kind}">×</button>` : '<span></span>'}</div>`; };
+  $('#src-list').innerHTML = [...DEF_TG.map(n => row(n, 'tg', false)), ...(srcCfg.telegram || []).map(n => row(n.replace(/^@/, ''), 'tg', true)),
+    ...DEF_RSS.map(n => row(n, 'rss', false)), ...(srcCfg.rss || []).map(r => row(r.name || r.url, 'rss', true, (() => { try { return new URL(r.url).hostname; } catch { return ''; } })()))].join('');
+  $('#gh-token').value = store.get('ghToken', '') ? '••••••••••••' : '';
+}
+async function saveSources() {
+  const tok = store.get('ghToken', '');
+  store.set('srcCfg', srcCfg); renderSources();
+  if (!tok) { $('#src-status').textContent = t('srcNeedToken'); $('.tok').open = true; return; }
+  $('#src-status').textContent = t('loading');
+  try {
+    const H = {Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json'};
+    let sha = null; try { const r = await fetch(GH_API + '?ref=main', {headers: H, cache: 'no-store'}); if (r.ok) sha = (await r.json()).sha; } catch {}
+    const body = {message: 'Джерела новин (FinRAD)', content: btoa(unescape(encodeURIComponent(JSON.stringify(srcCfg, null, 1)))), branch: 'main'}; if (sha) body.sha = sha;
+    const r = await fetch(GH_API, {method: 'PUT', headers: Object.assign({'Content-Type': 'application/json'}, H), body: JSON.stringify(body)});
+    if (!r.ok) throw new Error(r.status + ' ' + ((await r.json().catch(() => ({}))).message || ''));
+    $('#src-status').textContent = t('srcSaved');
+  } catch (e) { $('#src-status').textContent = t('srcErr') + e.message; }
+}
+function parseSource(v) {
+  v = v.trim(); if (!v) return null;
+  const tg = v.match(/^@([A-Za-z0-9_]{4,})$/) || v.match(/t\.me\/(?:s\/)?([A-Za-z0-9_]{4,})/i);
+  if (tg) return {kind: 'tg', name: tg[1]};
+  let u = v; if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  try { const x = new URL(u); if (!x.hostname.includes('.')) return null; return {kind: 'rss', name: x.hostname.replace(/^www\./, ''), url: x.href}; } catch { return null; }
 }
 
 // ---------- портфель ----------
@@ -841,9 +891,22 @@ const isOn = (k) => { const s = getLayout().find(x => x.k === k); return !s || s
 function applyLayout() {
   const main = $('#main'), foot = $('.foot', main);
   for (const s of getLayout()) { const el = $(`[data-sec="${s.k}"]`); if (!el) continue; main.insertBefore(el, foot); if (s.k === 'since') { if (!s.on || !sinceShown) el.hidden = true; } else el.hidden = !s.on; }
+  pairHalves();
   $('#layout-list').innerHTML = getLayout().map((s, i) => `<div class="lay"><label><input type="checkbox" data-lk="${s.k}"${s.on ? ' checked' : ''}> ${esc(t('sec_' + s.k))}</label><span><button data-mv="${i}" data-d="-1">↑</button><button data-mv="${i}" data-d="1">↓</button></span></div>`).join('');
 }
 
+function pairHalves() {
+  const vis = $$('#main > [data-sec]').filter(el => !el.hidden);
+  vis.forEach(el => el.classList.remove('solo'));
+  for (let i = 0; i < vis.length; i++) { const el = vis[i]; if (!el.classList.contains('half')) continue; const nx = vis[i + 1]; if (nx && nx.classList.contains('half')) { i++; continue; } el.classList.add('solo'); }
+}
+function balance(el, minW) {
+  if (!el) return; const n = el.children.length; if (!n) return;
+  const w = el.clientWidth || el.parentElement.clientWidth; if (!w) return;
+  const maxC = Math.max(1, Math.floor((w + 12) / (minW + 12))), cols = Math.min(n, Math.ceil(n / Math.ceil(n / maxC)));
+  el.style.display = 'grid'; el.style.gridTemplateColumns = `repeat(${cols},minmax(0,1fr))`;
+}
+function balanceAll() { balance($('#lights'), 200); balance($('#plain'), 200); balance($('#weekly'), 230); balance($('#mk-stats'), 130); balance($('#outlook'), 260); balance($('#since-row'), 110); }
 // ---------- оновлення ----------
 function setStatus(txt) {
   const fresh = Date.now() - state.tickAt < 3 * T_TICK && navigator.onLine !== false;
@@ -855,11 +918,12 @@ function setStatus(txt) {
 async function loadBrief() {
   try { const j = await getJSON(BASE + 'data/brief.json?t=' + Date.now(), 10000); if (j && j.brief) state.briefUk = j; } catch {}
   state.brief = state.briefUk;
-  if (LANG === 'en') { try { const j = await getJSON(BASE + 'data/brief_en.json?t=' + Date.now(), 10000); const a = (state.briefUk.brief || [])[0], b = (j.brief || [])[0]; if (j && b && (!a || a.date === b.date)) state.brief = j; } catch {} }
+  if (LANG === 'en') { try { let j; try { j = await getJSON(LIVE + 'brief_en.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/brief_en.json?t=' + Date.now(), 10000); } const a = (state.briefUk.brief || [])[0], b = (j.brief || [])[0]; if (j && b && (!a || a.date === b.date)) state.brief = j; } catch {} }
   renderHero(); renderBriefSections();
 }
 async function loadLive(first) {
-  try { const j = await getJSON(BASE + 'data/live.json?t=' + Date.now(), 10000);
+  try { let j; try { j = await getJSON(LIVE + 'live.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/live.json?t=' + Date.now(), 10000); }
+    if (state.live && j && j.updated && state.live.updated && j.updated < state.live.updated) j = state.live;
     if (j && j.items) { if (!state.live || state.live.updated !== j.updated || first) checkNewsNotifs(j); state.live = j; store.set('live', j); } } catch {}
   renderFeed(); renderPerps(); renderCal(); renderPulse();
 }
@@ -892,14 +956,15 @@ async function refreshAll() {
 // ---------- панелі ----------
 function openPanel(id) { $$('.drawer').forEach(d => d.hidden = d.id !== id); $('#scrim').hidden = false;
   if (id === 'drawer') { renderNotifs(); notifs.forEach(n => n.read = true); store.set('notifs', notifs); updateBadge(); }
-  if (id === 'settings') { renderAlerts(); renderSysBtn(); renderTg(); applyLayout(); } }
+  if (id === 'settings') { renderAlerts(); renderSysBtn(); renderTg(); applyLayout(); loadSources(); } }
 function closePanels() { $$('.drawer').forEach(d => d.hidden = true); $('#scrim').hidden = true; }
 function fillSelects() {
   const groups = [['c', t('crypto')], ['s', t('stocks')], ['p', t('perpsGrp')]];
   const opts = (list) => groups.map(([g, label]) => { const as = list.filter(a => a.g === g); return as.length ? `<optgroup label="${esc(label)}">` + as.map(a => `<option value="${a.id}">${esc(fullName(a))}</option>`).join('') + '</optgroup>' : ''; }).join('');
   const list = watchAssets(); if (!WATCH.includes(state.asset)) list.unshift(assetFor(state.asset));
-  const html = opts(list);
-  for (const s of ['#asset-select', '#pf-asset', '#al-asset']) { const el = $(s), v = el.value; el.innerHTML = html; if (v) el.value = v; }
+  const html = opts(list), all = [...list, ...BASE_ASSETS.filter(a => !list.includes(a))];
+  for (const s of ['#pf-asset', '#al-asset']) { const el = $(s), v = el.value; el.innerHTML = opts(all); if (v) el.value = v; }
+  for (const s of ['#asset-select']) { const el = $(s), v = el.value; el.innerHTML = html; if (v) el.value = v; }
   $('#asset-select').value = state.asset;
   $('#cmp-select').innerHTML = `<option value="">${t('none')}</option>` + opts(list.filter(a => a.id !== state.asset)); $('#cmp-select').value = state.cmp;
   const coins = [...new Set(['BTC', 'ETH', 'SOL', 'HYPE', 'XRP', 'DOGE', ...watchAssets().filter(a => a.g === 'c').map(a => a.tk)])];
@@ -920,7 +985,7 @@ function initCollapse() {
     const closed = !!saved[sec.id]; sec.classList.toggle('closed', closed);
     h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', String(!closed));
     const flip = () => { const c = !sec.classList.contains('closed'); sec.classList.toggle('closed', c); h.setAttribute('aria-expanded', String(!c)); const s = store.get('collapsed', {}); s[sec.id] = c; store.set('collapsed', s);
-      if (!c) { if (sec.id === 'sec-chart') redrawChart(); if (sec.id === 'sec-bubbles') loadBubbles(); if (sec.id === 'sec-liq') loadLiq(); } };
+      if (!c) { balanceAll(); if (sec.id === 'sec-chart') redrawChart(); if (sec.id === 'sec-watch') renderWatch(); if (sec.id === 'sec-bubbles') loadBubbles(); if (sec.id === 'sec-liq') loadLiq(); } };
     h.addEventListener('click', flip); h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
   });
 }
@@ -972,6 +1037,15 @@ function init() {
   $('#bubbles').addEventListener('mousemove', bubbleTip); $('#bubbles').addEventListener('mouseleave', hideTip);
   $('#bubbles').addEventListener('click', e => { const g = e.target.closest('.bub'); if (g) openSym(g.dataset.sym); });
   initDrag();
+  $('#src-form').addEventListener('submit', e => { e.preventDefault(); const p = parseSource($('#src-in').value); if (!p) { $('#src-status').textContent = t('srcBad'); return; }
+    if (p.kind === 'tg') { if (!DEF_TG.includes(p.name) && !(srcCfg.telegram || []).includes(p.name)) srcCfg.telegram = [...(srcCfg.telegram || []), p.name]; }
+    else if (!(srcCfg.rss || []).some(r => r.url === p.url)) srcCfg.rss = [...(srcCfg.rss || []), {name: p.name, url: p.url}];
+    srcCfg.disabled = (srcCfg.disabled || []).filter(x => x !== p.name); $('#src-in').value = ''; saveSources(); });
+  $('#src-list').addEventListener('change', e => { const n = e.target.dataset.srcOn; if (!n) return; const d = new Set(srcCfg.disabled || []); if (e.target.checked) d.delete(n); else d.add(n); srcCfg.disabled = [...d]; renderFeed(); saveSources(); });
+  $('#src-list').addEventListener('click', e => { const b = e.target.closest('[data-src-rm]'); if (!b) return; const n = b.dataset.srcRm;
+    if (b.dataset.kind === 'tg') srcCfg.telegram = (srcCfg.telegram || []).filter(x => x.replace(/^@/, '') !== n); else srcCfg.rss = (srcCfg.rss || []).filter(r => (r.name || r.url) !== n);
+    srcCfg.disabled = (srcCfg.disabled || []).filter(x => x !== n); saveSources(); });
+  $('#gh-save').addEventListener('click', () => { const v = $('#gh-token').value.trim(); if (!v || v.startsWith('•')) return; store.set('ghToken', v); $('#gh-token').value = '••••••••••••'; $('#src-status').textContent = t('tokenSaved'); saveSources(); });
   $('#since-x').addEventListener('click', () => { $('#sec-since').hidden = true; });
   $('#refresh').addEventListener('click', () => refreshAll());
   $('#bell').addEventListener('click', () => openPanel('drawer'));
@@ -1001,7 +1075,7 @@ function init() {
   $('#pf-rows').addEventListener('click', e => { const b = e.target.closest('.x'); if (!b) return; const rows = pfGet(); rows.splice(+b.dataset.i, 1); store.set('portfolio', rows); renderPortfolio(); });
   document.addEventListener('animationend', e => e.target.classList && e.target.classList.remove('flash-up', 'flash-dn'));
   initCollapse(); renderAll(); updateBadge();
-  let rz, lw = innerWidth; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (Math.abs(innerWidth - lw) < 20) return; lw = innerWidth; redrawChart(); renderBubbles(); loadLiq(); }, 200); });
+  let rz, lw = innerWidth; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (Math.abs(innerWidth - lw) < 20) return; lw = innerWidth; redrawChart(); renderBubbles(); loadLiq(); renderWatch(); balanceAll(); }, 200); });
 
   refreshAll().then(() => loadLive(true));
   setInterval(tick, T_TICK);
@@ -1015,7 +1089,9 @@ function init() {
   setInterval(() => { renderFeed(); setStatus(); }, 60e3);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveSnap(); else { tick(); loadLive(); if (Date.now() - state.last >= T_FULL) refreshAll(); } });
   addEventListener('pagehide', saveSnap);
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js?v=' + VERSION).catch(() => {});
+  const checkVersion = async () => { try { const j = await getJSON(BASE + 'version.json?t=' + Date.now(), 8000); if (j && j.v && j.v !== VERSION && location.protocol.startsWith('http')) { notify('alert', 'FinRAD ' + j.v, t('updating')); setTimeout(() => location.reload(), 2500); } } catch {} };
+  setTimeout(checkVersion, 5000); setInterval(checkVersion, 3 * 60e3);
 }
 init();
 })();

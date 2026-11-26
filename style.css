@@ -196,7 +196,7 @@ select{cursor:pointer}
 .switch i{position:absolute;inset:0;background:var(--line);border-radius:12px;transition:.2s;cursor:pointer}
 .switch i::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
 .switch input:checked+i{background:var(--accent)} .switch input:checked+i::before{transform:translateX(18px)}
-.st.warn{color:var(--warn)}
+.stance{font-weight:700}.stance.warn{color:var(--warn)}
 /* стрічка новин */
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .count{font-size:12px;font-weight:600;color:var(--muted);background:var(--card2);border:1px solid var(--line);padding:1px 8px;border-radius:999px}
@@ -443,3 +443,35 @@ th.r,td.r{text-align:right}
 .dc .dots{margin-top:auto;justify-content:flex-start}
 .dc .cc{display:none}
 @media (min-width:1100px){.dc{min-height:64px}}
+
+/* 3.3 — геометрія */
+.tiles{display:grid;gap:10px}
+.tiles > .tile{min-width:0}
+.wrap > .half.solo{grid-column:1/-1}
+.wrap > .half{display:flex;flex-direction:column}
+.wrap > .half > p.muted:last-child{margin-top:auto}
+.lights{display:flex;flex-wrap:wrap;gap:10px}
+.lights > .light{flex:1 1 220px}
+.plain{display:flex;flex-wrap:wrap;gap:12px}
+.plain > .pl{flex:1 1 230px}
+.weekly{display:flex;flex-wrap:wrap;gap:12px}
+.weekly > div{flex:1 1 260px}
+.stats{display:flex;flex-wrap:wrap;gap:10px}
+.stats > .st{flex:1 1 140px}
+.ol-grid{display:flex;flex-wrap:wrap;gap:0 18px}
+.ol-grid > .ol{flex:1 1 280px}
+.since-row > .sc{flex:1 1 auto;justify-content:space-between}
+.src-list{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow:auto}
+.srcr{display:grid;grid-template-columns:1fr auto 22px;gap:8px;align-items:center;padding:5px 8px;border-radius:8px;background:var(--card2);border:1px solid var(--line);font-size:13.5px}
+.srcr label{display:flex;gap:6px;align-items:center;cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srcr .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px}
+.src-k{width:16px;text-align:center}
+.tok{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13.5px}
+.tok summary{cursor:pointer;font-weight:600}
+.tok p{margin:8px 0}
+.tok .alert-form{margin-bottom:8px}
+.m-h{font-size:14.5px}
+.dc .dnum{white-space:nowrap}
+
+.chart{height:auto!important;min-height:0}
+.chart svg{display:block;width:100%;height:auto}
