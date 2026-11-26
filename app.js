@@ -1,7 +1,7 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.4.0';
+const VERSION = '3.5.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
@@ -17,7 +17,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- мова ----------
-let LANG = store.get('lang', 'uk');
+const SYS_LANG = (navigator.languages || [navigator.language || 'en']).map(l => l.toLowerCase());
+let LANG = store.get('lang', SYS_LANG.some(l => /^(uk|ru|be)/.test(l)) ? 'uk' : 'en');
 const t = (k, v) => { let s = (I18N[LANG] && I18N[LANG][k]) ?? I18N.uk[k] ?? k; if (v) for (const x in v) s = s.replace('{' + x + '}', v[x]); return s; };
 const LOC = () => LANG === 'uk' ? 'uk-UA' : 'en-US';
 function applyI18n() {
@@ -84,7 +85,14 @@ function applyLook() {
 }
 
 // ---------- валюта ----------
-let CUR = store.get('cur', 'USD'), RATES = store.get('rates', {USD: 1});
+function sysCurrency() {
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || ''), loc = (navigator.language || '').toUpperCase();
+  if (/Kiev|Kyiv/.test(tz) || /-UA$/.test(loc)) return 'UAH';
+  if (/Bucharest/.test(tz) || /-RO$/.test(loc)) return 'RON';
+  if (/^Europe\//.test(tz) && !/London|Moscow|Istanbul|Minsk|Chisinau|Belgrade|Zurich|Oslo|Stockholm|Copenhagen|Warsaw|Prague|Budapest/.test(tz)) return 'EUR';
+  return 'USD';
+}
+let CUR = store.get('cur', sysCurrency()), RATES = store.get('rates', {USD: 1});
 const SYM = {USD: '$', EUR: '€', UAH: '₴', RON: 'lei '};
 const rate = () => RATES[CUR] || 1;
 async function loadRates() {
@@ -866,10 +874,10 @@ function checkPriceAlerts() {
 }
 function renderAlerts() { const al = store.get('alerts', []); $('#alert-list').innerHTML = al.map((a, i) => `<div class="al${a.done ? ' done' : ''}"><span>${esc(assetFor(a.id).tk)} ${a.op === '>' ? '≥' : '≤'} ${money(a.price)}</span>${a.done ? '<span class="muted small">✓</span>' : ''}<button class="x" data-i="${i}">×</button></div>`).join('') || `<div class="muted small">${t('noAlerts')}</div>`; $('#al-price').placeholder = SYM[CUR].trim(); }
 function renderSysBtn() {
-  const b = $('#sys-notif');
-  if (!('Notification' in window)) { b.textContent = t('unsupported'); b.disabled = true; return; }
-  if (Notification.permission === 'denied') { b.textContent = t('blocked'); b.disabled = true; return; }
-  const on = Notification.permission === 'granted' && store.get('sysNotif', false); b.textContent = on ? t('enabled') + ' ✓' : t('enable'); b.classList.toggle('primary', !on);
+  const tg = $('#sys-notif'), st = $('#sys-notif-st');
+  if (!('Notification' in window)) { tg.checked = false; tg.disabled = true; st.textContent = t('unsupported'); return; }
+  if (Notification.permission === 'denied') { tg.checked = false; tg.disabled = true; st.textContent = t('blockedHelp'); return; }
+  tg.disabled = false; tg.checked = Notification.permission === 'granted' && store.get('sysNotif', false); st.textContent = tg.checked ? t('sysOnHelp') : t('sysOffHelp');
 }
 async function renderTg() {
   let s = null; try { s = await getJSON(LIVE + 'tg.json?t=' + Date.now(), 8000); } catch { try { s = await getJSON(BASE + 'data/tg.json?t=' + Date.now(), 8000); } catch {} }
@@ -1025,9 +1033,10 @@ function fillSelects() {
   const coins = [...new Set(['BTC', 'ETH', 'SOL', 'HYPE', 'XRP', 'DOGE', ...watchAssets().filter(a => a.g === 'c').map(a => a.tk)])];
   $('#liq-coin').innerHTML = coins.map(c => `<option>${c}</option>`).join(''); $('#liq-coin').value = state.liqCoin;
 }
+const safe = (fn) => { try { fn(); } catch (e) { console.error('[FinRAD]', fn.name, e); } };
 function renderAll() {
-  applyI18n(); applyLook(); fillSelects(); applyLayout(); renderHero(); renderBriefSections(); renderWatch(); renderPortfolio(); renderFng(); renderAuto(); renderPulse();
-  renderChartHead(); renderFeed(); renderPerps(); renderCal(); renderMarkets(); renderNotifs(); renderAlerts(); renderSysBtn(); redrawChart(); setStatus();
+  [applyI18n, applyLook, fillSelects, applyLayout, renderHero, renderBriefSections, renderWatch, renderPortfolio, renderFng, renderAuto, renderPulse,
+   renderChartHead, renderFeed, renderPerps, renderCal, renderMarkets, renderNotifs, renderAlerts, renderSysBtn, redrawChart, () => setStatus()].forEach(safe);
   $('#ver').textContent = 'v' + VERSION;
   $$('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === LANG)); $$('#cur-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === CUR));
   $$('#nmode-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === store.get('nmode', 'imp'))); $('#sound-tog').checked = store.get('sound', false);
@@ -1119,9 +1128,9 @@ function init() {
   $('#layout-reset').addEventListener('click', () => { store.set('layout', null); applyLayout(); renderBubbles(); loadLiq(); redrawChart(); });
   seg('#nmode-seg', b => store.set('nmode', b.dataset.v));
   $('#sound-tog').addEventListener('change', e => { store.set('sound', e.target.checked); if (e.target.checked) beep(); });
-  $('#sys-notif').addEventListener('click', async () => {
+  $('#sys-notif').addEventListener('change', async (e) => {
     if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted' && store.get('sysNotif', false)) { store.set('sysNotif', false); renderSysBtn(); return; }
+    if (!e.target.checked) { store.set('sysNotif', false); renderSysBtn(); return; }
     const p = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission(); store.set('sysNotif', p === 'granted'); renderSysBtn();
     if (p === 'granted') notify('alert', t('notifications'), t('enabled') + ' ✓');
   });

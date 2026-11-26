@@ -12,14 +12,14 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=3.4.0">
+<link rel="stylesheet" href="style.css?v=3.5.0">
 </head>
 <body>
 <header class="top">
   <div class="brand">
     <img src="icons/icon-192.png" alt="" class="logo">
     <div class="brand-t">
-      <div class="name" data-i18n="app">Фінансовий радник</div>
+      <div class="name" data-i18n="app">FinRAD</div>
       <div class="sub"><span class="live-dot" id="live-dot"></span><span id="status">…</span></div>
     </div>
   </div>
@@ -215,7 +215,8 @@
 
     <h3 class="group" data-i18n="notifications">Сповіщення</h3>
     <div class="set-row"><span data-i18n="notifyWhat">Сповіщати про новини</span><div class="seg small" id="nmode-seg"><button data-v="imp" data-i18n="important">Важливі</button><button data-v="all" data-i18n="all">Усі</button><button data-v="off" data-i18n="off">Вимк.</button></div></div>
-    <div class="set-row"><span data-i18n="sysNotif">Системні сповіщення</span><button class="btn small" id="sys-notif"></button></div>
+    <div class="set-row"><span data-i18n="sysNotif">Системні сповіщення</span><label class="switch"><input type="checkbox" id="sys-notif"><i></i></label></div>
+    <div class="muted small" id="sys-notif-st" style="margin-top:-8px"></div>
     <div class="set-row"><span data-i18n="sound">Звук</span><label class="switch"><input type="checkbox" id="sound-tog"><i></i></label></div>
     <h3 class="group" data-i18n="priceAlerts">Цінові сповіщення</h3>
     <form class="alert-form" id="alert-form"><select id="al-asset"></select><select id="al-op"><option value=">" data-i18n="above">вище</option><option value="<" data-i18n="below">нижче</option></select><input id="al-price" type="number" step="any" min="0" required><button class="btn primary small" type="submit" data-i18n="add">Додати</button></form>
@@ -241,7 +242,7 @@
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="tip" id="tip" hidden></div>
 <script src="data/brief.js"></script>
-<script src="i18n.js?v=3.4.0"></script>
-<script src="app.js?v=3.4.0"></script>
+<script src="i18n.js?v=3.5.0"></script>
+<script src="app.js?v=3.5.0"></script>
 </body>
 </html>
