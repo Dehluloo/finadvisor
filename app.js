@@ -1,7 +1,7 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.0.0';
+const VERSION = '3.1.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
@@ -24,6 +24,49 @@ function applyI18n() {
   $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   $$('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   $$('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  decorateHeads();
+}
+// ---------- підказки ⓘ і ручки для перетягування ----------
+function decorateHeads() {
+  $$('[data-sec]').forEach(sec => {
+    const k = sec.dataset.sec, h = $('.head h2', sec) || $('.hero-i', sec);
+    if (!sec.querySelector(':scope > .drag-h')) { const d = document.createElement('span'); d.className = 'drag-h'; d.innerHTML = '<i></i>'; sec.prepend(d); }
+    sec.querySelector(':scope > .drag-h').title = t('dragHint');
+    if (h && !h.querySelector('.info')) { const b = document.createElement('button'); b.className = 'info'; b.type = 'button'; b.dataset.help = k; b.textContent = 'i'; h.appendChild(b); }
+    if (h) { const b = h.querySelector('.info'); if (b) b.title = t('help'); }
+  });
+}
+function showHelp(btn) {
+  let pop = $('#help-pop'); if (!pop) { pop = document.createElement('div'); pop.id = 'help-pop'; pop.className = 'help-pop'; document.body.appendChild(pop); }
+  if (!pop.hidden && pop.dataset.k === btn.dataset.help) { pop.hidden = true; return; }
+  pop.dataset.k = btn.dataset.help; pop.innerHTML = `<b>${esc(t('sec_' + btn.dataset.help))}</b><p>${esc(t('h_' + btn.dataset.help))}</p>`; pop.hidden = false;
+  const r = btn.getBoundingClientRect(), w = Math.min(340, innerWidth - 24);
+  pop.style.width = w + 'px'; pop.style.left = clamp(r.left - w / 2, 12, innerWidth - w - 12) + 'px'; pop.style.top = (r.bottom + scrollY + 8) + 'px';
+}
+function initDrag() {
+  let drag = null, raf = 0, lastY = 0;
+  const main = $('#main');
+  const scrollLoop = () => { if (!drag) return; if (lastY < 70) scrollBy(0, -14); else if (lastY > innerHeight - 70) scrollBy(0, 14); raf = requestAnimationFrame(scrollLoop); };
+  main.addEventListener('pointerdown', e => {
+    const hnd = e.target.closest('.drag-h'); if (!hnd) return;
+    e.preventDefault(); const sec = hnd.parentElement; drag = sec; sec.classList.add('dragging'); document.body.classList.add('is-dragging');
+    hnd.setPointerCapture(e.pointerId); lastY = e.clientY; raf = requestAnimationFrame(scrollLoop);
+  });
+  main.addEventListener('pointermove', e => {
+    if (!drag) return; lastY = e.clientY;
+    const el = document.elementFromPoint(e.clientX, e.clientY), over = el && el.closest('[data-sec]');
+    if (!over || over === drag || over.parentElement !== main) return;
+    const r = over.getBoundingClientRect(), half = over.classList.contains('half') && r.width < main.clientWidth * 0.7;
+    const before = half ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2;
+    main.insertBefore(drag, before ? over : over.nextSibling);
+  });
+  const end = () => {
+    if (!drag) return; drag.classList.remove('dragging'); document.body.classList.remove('is-dragging'); cancelAnimationFrame(raf);
+    const on = Object.fromEntries(getLayout().map(s => [s.k, s.on]));
+    store.set('layout', $$('#main > [data-sec]').map(el => ({k: el.dataset.sec, on: on[el.dataset.sec] !== false})));
+    drag = null; redrawChart(); renderBubbles(); loadLiq();
+  };
+  main.addEventListener('pointerup', end); main.addEventListener('pointercancel', end);
 }
 
 // ---------- вигляд ----------
@@ -32,6 +75,8 @@ function applyLook() {
   const th = store.get('theme', 'auto'); document.documentElement.dataset.theme = th;
   const ac = store.get('accent', ACCENTS[0]); document.documentElement.style.setProperty('--accent', ac); document.documentElement.style.setProperty('--accent2', ac);
   document.documentElement.dataset.density = store.get('density', 'comfy');
+  document.documentElement.dataset.tips = store.get('tips', true) ? 'on' : 'off';
+  const tt = $('#tips-tog'); if (tt) tt.checked = store.get('tips', true);
   $$('#theme-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === th));
   $$('#dens-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === store.get('density', 'comfy')));
   $('#accent-sw').innerHTML = ACCENTS.map(c => `<button class="sw-b${c === ac ? ' on' : ''}" data-c="${c}" style="background:${c}"></button>`).join('');
@@ -93,7 +138,7 @@ const state = {
   tickers: store.get('tickers', {}), allInst: store.get('allInst', []), allTick: null, tickAt: store.get('tickAt', 0), sparks: store.get('sparks', {}),
   fng: store.get('fng', null), btcDaily: store.get('btcDaily', null), last: store.get('last', 0),
   brief: window.BRIEF || {}, briefUk: window.BRIEF || {}, live: store.get('live', null), events: store.get('events', []), mk: store.get('mk', null), global: store.get('global', null), trend: store.get('trend', []),
-  newsF: 'all', liveCat: 'all', liveSent: 'all', feedN: 12, mkN: 25, mkSort: ['market_cap_rank', 1], mkQ: '', bbPer: '24h', bbSize: 'chg',
+  newsF: 'all', liveCat: 'all', liveSent: 'all', feedN: 12, mkN: 25, mkSort: ['market_cap_rank', 1], mkQ: '', bbPer: store.get('bbPer', '24h'), bbSize: 'chg', bbItems: null,
   liqCoin: store.get('liqCoin', 'BTC'), liqDays: 7, calRange: store.get('calRange', 31), calView: store.get('calView', 'grid'), calHigh: store.get('calHigh', false), calDay: null,
   editWatch: false, showOrig: {}
 };
@@ -424,7 +469,7 @@ async function loadMarkets() {
     if (gl.status === 'fulfilled' && gl.value.data) { state.global = gl.value.data; store.set('global', state.global); }
     if (tr.status === 'fulfilled' && tr.value.coins) { state.trend = tr.value.coins.slice(0, 7).map(c => ({symbol:c.item.symbol.toUpperCase(), name:c.item.name, image:c.item.small || c.item.thumb, chg: c.item.data && c.item.data.price_change_percentage_24h && c.item.data.price_change_percentage_24h.usd})); store.set('trend', state.trend); }
   } catch {}
-  renderMarkets(); renderBubbles(); renderPulse();
+  renderMarkets(); loadBubbles(); renderPulse();
 }
 const cdcFor = (sym) => state.allInst.includes(sym + '_USD') ? sym + '_USD' : null;
 function renderMarkets() {
@@ -458,19 +503,60 @@ function openSym(sym) {
   const c = $('#sec-chart'); if (c.hidden) return; if (c.classList.contains('closed')) $('.head h2', c).click(); c.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-// ---------- бульбашки ----------
-let bbCache = null;
-function renderBubbles() {
-  const el = $('#bubbles'), M = (state.mk || []).slice(0, 100);
-  if (!M.length || $('#sec-bubbles').hidden || $('#sec-bubbles').classList.contains('closed')) return;
-  const key = {'1h':'price_change_percentage_1h_in_currency', '24h':'price_change_percentage_24h_in_currency', '7d':'price_change_percentage_7d_in_currency'}[state.bbPer];
+// ---------- бульбашки (наживо) ----------
+const STABLE = new Set(['USDT','USDC','DAI','FDUSD','USDE','TUSD','USDS','PYUSD','BUSD','USDD','FRAX','USD1','RLUSD','BSC-USD','USDX','USDTB','SUSDE','USDF','GHO','LUSD','EURC','XAUT','PAXG','WBTC','WETH','STETH','WSTETH','WEETH','CBBTC','RETH','LBTC','SOLVBTC','BNSOL','JITOSOL','MSOL','RSETH','EZETH','METH','SUSDS','WBETH','CLBTC','BBTC']);
+const BB_WIN = {'1m': ['1m', 60e3], '5m': ['5m', 300e3], '15m': ['15m', 900e3], '1h': ['1h', 3600e3], '24h': ['1d', 86400e3], '7d': ['7d', 7 * 86400e3]};
+const priceBuf = [];
+function pushPriceBuf() { if (!state.allTick) return; const m = {}; for (const id in state.allTick) if (id.endsWith('_USD')) m[id] = state.allTick[id].last; priceBuf.push({t: Date.now(), m}); while (priceBuf.length > 140) priceBuf.shift(); }
+function bufChange(id, ms) { if (priceBuf.length < 2) return null; const now = priceBuf.at(-1), target = now.t - ms; let old = null; for (const s of priceBuf) { if (s.t <= target + 15e3) old = s; else break; } if (!old || !old.m[id] || !now.m[id]) return null; return (now.m[id] / old.m[id] - 1) * 100; }
+let bnSyms = null;
+async function bnSymbols() { if (bnSyms) return bnSyms; const j = await getJSON('https://data-api.binance.vision/api/v3/ticker/price', 15000); bnSyms = new Set(j.map(x => x.symbol)); return bnSyms; }
+async function bnWindow(symbols, win) {
+  const out = {};
+  for (let i = 0; i < symbols.length; i += 100) {
+    const chunk = symbols.slice(i, i + 100);
+    const j = await getJSON(`https://data-api.binance.vision/api/v3/ticker?windowSize=${win}&type=MINI&symbols=${encodeURIComponent(JSON.stringify(chunk))}`, 15000);
+    for (const x of j) if (+x.openPrice > 0) out[x.symbol] = {chg: (+x.lastPrice / +x.openPrice - 1) * 100, last: +x.lastPrice};
+  }
+  return out;
+}
+let bbReq = 0;
+async function loadBubbles() {
+  const sec = $('#sec-bubbles'); if (sec.hidden || sec.classList.contains('closed')) return;
+  const M = (state.mk || []).filter(c => !STABLE.has(c.symbol)).slice(0, 100); if (!M.length) return;
+  const my = ++bbReq, per = state.bbPer, [win, ms] = BB_WIN[per];
+  let bn = {};
+  try { const syms = await bnSymbols(); bn = await bnWindow(M.map(c => c.symbol + 'USDT').filter(x => syms.has(x)), win); } catch {}
+  if (my !== bbReq) return;
+  const cgKey = {'1h':'price_change_percentage_1h_in_currency', '24h':'price_change_percentage_24h_in_currency', '7d':'price_change_percentage_7d_in_currency'}[per];
+  const items = [];
+  for (const c of M) {
+    const b = bn[c.symbol + 'USDT'];
+    let v = b ? b.chg : null;
+    if (v == null && ms <= 3600e3) v = bufChange(c.symbol + '_USD', ms);
+    if (v == null && cgKey) v = c[cgKey];
+    if (v == null) continue;
+    items.push({c, v, price: b ? b.last : (state.allTick && state.allTick[c.symbol + '_USD'] ? state.allTick[c.symbol + '_USD'].last : c.current_price)});
+  }
+  state.bbItems = items;
+  const note = $('#bb-note');
+  if (items.length < 20 && ms <= 900e3) { const left = Math.max(0, Math.round((ms - (priceBuf.length ? Date.now() - priceBuf[0].t : 0)) / 1000)); note.textContent = t('liveFill', {p: per, s: left}); } else note.textContent = '● ' + t('bbLive') + ' · ' + hhmm(new Date());
+  drawBubbles();
+}
+const bbPos = {};
+let bbW = 0;
+function renderBubbles() { if (state.bbItems) drawBubbles(); else loadBubbles(); }
+function drawBubbles() {
+  const el = $('#bubbles'), items = state.bbItems || [];
+  if (!items.length || $('#sec-bubbles').hidden || $('#sec-bubbles').classList.contains('closed')) return;
   const W = el.clientWidth || 800, H = innerWidth < 600 ? 420 : 520;
-  const items = M.filter(c => c[key] != null).map(c => ({c, v: c[key]}));
-  const raw = items.map(it => state.bbSize === 'chg' ? Math.sqrt(Math.abs(it.v) + 0.3) : Math.sqrt(Math.sqrt(it.c.market_cap || 1)));
+  const raw = items.map(it => state.bbSize === 'chg' ? Math.sqrt(Math.abs(it.v) + 0.08 * (BB_WIN[state.bbPer][1] < 3600e3 ? 0.2 : 1)) : Math.sqrt(Math.sqrt(it.c.market_cap || 1)));
   const sum = raw.reduce((s, r) => s + r * r * Math.PI, 0), k = Math.sqrt(W * H * 0.6 / sum);
-  const prev = bbCache && bbCache.W === W ? Object.fromEntries(bbCache.nodes.map(n => [n.id, n])) : {};
-  const nodes = items.map((it, i) => { const r = clamp(raw[i] * k, 9, Math.min(W, H) / 5), p = prev[it.c.id]; return {id: it.c.id, it, r, x: p ? p.x : W / 2 + (Math.random() - .5) * W * .8, y: p ? p.y : H / 2 + (Math.random() - .5) * H * .8}; });
-  for (let iter = 0; iter < 240; iter++) {
+  if (bbW !== W) { for (const key in bbPos) delete bbPos[key]; bbW = W; }
+  const fresh = !el.querySelector('svg') || el.dataset.w !== String(W);
+  const nodes = items.map((it, i) => { const r = clamp(raw[i] * k, 9, Math.min(W, H) / 5), p = bbPos[it.c.symbol]; return {sym: it.c.symbol, it, r, x: p ? p.x : W / 2 + (Math.random() - .5) * W * .8, y: p ? p.y : H / 2 + (Math.random() - .5) * H * .8}; });
+  const iters = Object.keys(bbPos).length ? 90 : 260;
+  for (let iter = 0; iter < iters; iter++) {
     for (const n of nodes) { n.x += (W / 2 - n.x) * 0.004; n.y += (H / 2 - n.y) * 0.006; }
     for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i], b = nodes[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01, min = a.r + b.r + 2;
@@ -478,18 +564,27 @@ function renderBubbles() {
     }
     for (const n of nodes) { n.x = clamp(n.x, n.r, W - n.r); n.y = clamp(n.y, n.r, H - n.r); }
   }
-  bbCache = {W, nodes};
-  const defs = [], P = [];
-  nodes.forEach((n, i) => {
-    const v = n.it.v, int = clamp(Math.abs(v) / 10, .25, 1), col = v >= 0 ? '34,197,94' : '239,68,68';
-    defs.push(`<radialGradient id="bg${i}" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="rgba(${col},${(int * .12).toFixed(2)})"/><stop offset=".75" stop-color="rgba(${col},${(int * .32).toFixed(2)})"/><stop offset="1" stop-color="rgba(${col},${(int * .9).toFixed(2)})"/></radialGradient>`);
-    const fs = clamp(n.r / 2.6, 8, 22), sym = n.it.c.symbol;
-    P.push(`<g class="bub" data-sym="${esc(sym)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><circle r="${n.r.toFixed(1)}" fill="url(#bg${i})" stroke="rgba(${col},.9)" stroke-width="1.5"/>${n.r > 14 ? `<text y="${(-fs * 0.1).toFixed(1)}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="700" fill="var(--fg)">${esc(sym)}</text><text y="${(fs * 0.95).toFixed(1)}" text-anchor="middle" font-size="${(fs * 0.72).toFixed(1)}" fill="var(--fg)" opacity=".85">${pct(v, 1)}</text>` : ''}</g>`);
-  });
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><defs>${defs.join('')}</defs>${P.join('')}</svg>`;
-  $$('.bub', el).forEach(g => { const c = M.find(x => x.symbol === g.dataset.sym); if (!c) return;
-    g.addEventListener('mousemove', e => showTip(`<b>${esc(c.name)}</b> (${esc(c.symbol)}) #${c.market_cap_rank}<br>${money(c.current_price)}<br>1h ${pct(c.price_change_percentage_1h_in_currency, 1)} · 24h ${pct(c.price_change_percentage_24h_in_currency, 1)} · 7d ${pct(c.price_change_percentage_7d_in_currency, 1)}<br>${t('mcap')} ${moneyBig(c.market_cap)}`, e.clientX, e.clientY));
-    g.addEventListener('mouseleave', hideTip); g.addEventListener('click', () => openSym(c.symbol)); });
+  for (const n of nodes) bbPos[n.sym] = {x: n.x, y: n.y};
+  if (fresh) { el.dataset.w = W; el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><defs></defs><g class="bb-root"></g></svg>`; }
+  const svg = el.querySelector('svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  const defs = svg.querySelector('defs'), root = svg.querySelector('.bb-root'), keep = new Set();
+  for (const n of nodes) {
+    const v = n.it.v, int = clamp(Math.abs(v) / (BB_WIN[state.bbPer][1] < 3600e3 ? 1.5 : 10), .25, 1), col = v >= 0 ? '34,197,94' : '239,68,68', id = 'bg-' + n.sym.replace(/[^A-Za-z0-9]/g, '_');
+    keep.add(n.sym);
+    let gr = defs.querySelector('#' + id); if (!gr) { gr = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient'); gr.id = id; gr.setAttribute('cx', '50%'); gr.setAttribute('cy', '40%'); gr.setAttribute('r', '60%'); defs.appendChild(gr); }
+    gr.innerHTML = `<stop offset="0" stop-color="rgba(${col},${(int * .12).toFixed(2)})"/><stop offset=".75" stop-color="rgba(${col},${(int * .32).toFixed(2)})"/><stop offset="1" stop-color="rgba(${col},${(int * .9).toFixed(2)})"/>`;
+    let g = root.querySelector(`[data-sym="${CSS.escape(n.sym)}"]`);
+    if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'bub'); g.dataset.sym = n.sym; g.style.transform = `translate(${n.x}px,${n.y}px)`; root.appendChild(g); }
+    const fs = clamp(n.r / 2.6, 8, 22);
+    g.innerHTML = `<circle r="${n.r.toFixed(1)}" fill="url(#${id})" stroke="rgba(${col},.9)" stroke-width="1.5"/>${n.r > 14 ? `<text y="${(-fs * 0.1).toFixed(1)}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="700">${esc(n.sym)}</text><text y="${(fs * 0.95).toFixed(1)}" text-anchor="middle" font-size="${(fs * 0.72).toFixed(1)}" opacity=".85">${pct(v, v && Math.abs(v) < 1 ? 2 : 1)}</text>` : ''}`;
+    requestAnimationFrame(() => { g.style.transform = `translate(${n.x.toFixed(1)}px,${n.y.toFixed(1)}px)`; });
+  }
+  $$('.bub', root).forEach(g => { if (!keep.has(g.dataset.sym)) g.remove(); });
+}
+function bubbleTip(e) {
+  const g = e.target.closest('.bub'); if (!g) { hideTip(); return; }
+  const it = (state.bbItems || []).find(x => x.c.symbol === g.dataset.sym); if (!it) return; const c = it.c;
+  showTip(`<b>${esc(c.name)}</b> (${esc(c.symbol)}) #${c.market_cap_rank}<br>${money(it.price)}<br>${state.bbPer}: <span class="${cls(it.v)}">${pct(it.v)}</span><br>${t('mcap')} ${moneyBig(c.market_cap)}`, e.clientX, e.clientY);
 }
 
 // ---------- карта ліквідацій ----------
@@ -517,16 +612,30 @@ async function loadLiq() {
     }
   });
   const mx = Math.max(...bins) || 1;
-  const W = el.clientWidth || 600, H = 380, padL = 74, padR = 10, padT = 8, padB = 8, ih = H - padT - padB, bh = ih / NB;
+  const W = el.clientWidth || 600, H = 400, padL = 78, padR = 16, padT = 12, padB = 12, ih = H - padT - padB, bh = ih / NB, bwMax = W - padL - padR - 120;
   const y = (pr) => padT + (hi - pr) / (hi - lo) * ih, P = [];
-  for (let k = 0; k <= 6; k++) { const pr = lo + (hi - lo) * k / 6; P.push(`<line class="grid" x1="${padL}" x2="${W - padR}" y1="${y(pr)}" y2="${y(pr)}"/><text class="ax" x="${padL - 6}" y="${y(pr) + 4}" text-anchor="end">${moneyAxis(pr)}</text>`); }
-  for (let b = 0; b < NB; b++) { if (!bins[b]) continue; const p0 = lo + b * bw, w = bins[b] / mx * (W - padL - padR - 100);
-    P.push(`<rect x="${padL}" y="${(y(p0 + bw) + 0.5).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, bh - 1).toFixed(1)}" rx="2" fill="${p0 > price ? 'var(--dn)' : 'var(--up)'}" opacity="${(.35 + .65 * bins[b] / mx).toFixed(2)}"/>`); }
-  P.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(price)}" y2="${y(price)}" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="5 3"/><rect x="${W - padR - 104}" y="${y(price) - 10}" width="104" height="20" rx="5" fill="var(--fg)"/><text x="${W - padR - 52}" y="${y(price) + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--bg)">${t('current')} ${moneyAxis(price)}</text>`);
+  const heat = (r, up) => { const a = up ? [[127, 29, 29], [239, 68, 68], [253, 186, 116]] : [[6, 78, 59], [16, 185, 129], [167, 243, 208]]; const k = r < .5 ? 0 : 1, f = r < .5 ? r / .5 : (r - .5) / .5, c0 = a[k], c1 = a[k + 1]; return `rgb(${c0.map((v, i) => Math.round(v + (c1[i] - v) * f)).join(',')})`; };
+  P.push(`<defs><linearGradient id="lqbg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1a0b12"/><stop offset=".5" stop-color="#0b1020"/><stop offset="1" stop-color="#06160f"/></linearGradient></defs><rect x="0" y="0" width="${W}" height="${H}" rx="12" fill="url(#lqbg)"/>`);
+  for (let k = 0; k <= 8; k++) { const pr = lo + (hi - lo) * k / 8, yy = y(pr); P.push(`<line x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}" stroke="rgba(255,255,255,.07)"/><text x="${padL - 8}" y="${yy + 4}" text-anchor="end" font-size="11" fill="rgba(255,255,255,.75)" font-variant-numeric="tabular-nums">${moneyAxis(pr)}</text>`); }
+  let cumS = 0, cumL = 0; const cs = [], cl = [];
+  const pb = Math.floor((price - lo) / bw);
+  for (let b = pb + 1; b < NB; b++) { cumS += bins[b]; cs.push([b, cumS]); }
+  for (let b = pb; b >= 0; b--) { cumL += bins[b]; cl.push([b, cumL]); }
+  const cmax = Math.max(cumS, cumL) || 1;
+  for (let b = 0; b < NB; b++) { if (!bins[b]) continue; const p0 = lo + b * bw, r = bins[b] / mx, w = Math.max(2, r * bwMax), up = p0 > price;
+    P.push(`<rect class="lqb" data-b="${b}" x="${padL}" y="${(y(p0 + bw) + 0.6).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, bh - 1.2).toFixed(1)}" rx="2" fill="${heat(r, up)}" opacity="${(.45 + .55 * r).toFixed(2)}"/>`); }
+  const cline = (arr, col) => arr.length > 1 ? `<polyline points="${arr.map(([b, v]) => `${(W - padR - v / cmax * 110).toFixed(1)},${y(lo + (b + .5) * bw).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" opacity=".9"/>` : '';
+  P.push(cline(cs, '#f87171'), cline(cl, '#34d399'));
+  P.push(`<text x="${W - padR - 4}" y="${padT + 12}" text-anchor="end" font-size="10.5" fill="rgba(255,255,255,.55)">${t('liqCum')} →</text>`);
+  const py = y(price);
+  P.push(`<line x1="${padL}" x2="${W - padR}" y1="${py}" y2="${py}" stroke="#fff" stroke-width="1.4" stroke-dasharray="6 4" opacity=".9"/><rect x="4" y="${py - 11}" width="${padL - 8}" height="22" rx="6" fill="var(--accent)"/><text x="${padL / 2}" y="${py + 4}" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">${moneyAxis(price)}</text>`);
   const top = bins.map((v, b) => ({v, b})).filter(x => x.v).sort((a, b) => b.v - a.v).slice(0, 6).sort((a, b) => b.b - a.b);
   el.innerHTML = `<div class="liq-w"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${P.join('')}</svg></div>
-    <div class="liq-top"><div class="muted small">${t('liqTop')}</div>${top.map(x => { const p0 = lo + (x.b + .5) * bw; return `<div class="lt"><span class="dot ${p0 > price ? 'red' : 'green'}"></span>${moneyAxis(p0)} <span class="muted">(${pct((p0 / price - 1) * 100, 1)})</span><span class="r">${Math.round(x.v / mx * 100)} <span class="muted">${t('intensity')}</span></span></div>`; }).join('')}
+    <div class="liq-top"><div class="muted small">${t('liqTop')}</div>${top.map(x => { const p0 = lo + (x.b + .5) * bw, up = p0 > price; return `<div class="lt"><span class="dot ${up ? 'red' : 'green'}"></span>${moneyAxis(p0)} <span class="muted">(${pct((p0 / price - 1) * 100, 1)})</span><span class="r"><span class="bar" style="width:${Math.round(x.v / mx * 40)}px;background:${heat(x.v / mx, up)}"></span></span></div>`; }).join('')}
     <div class="liq-leg"><span><span class="dot red"></span>${t('liqShort')}</span><span><span class="dot green"></span>${t('liqLong')}</span></div></div>`;
+  const svg = el.querySelector('svg');
+  svg.addEventListener('mousemove', e => { const r = e.target.closest('.lqb'); if (!r) { hideTip(); return; } const b = +r.dataset.b, p0 = lo + b * bw; showTip(`${t('liqPrice')}: ${moneyAxis(p0)} – ${moneyAxis(p0 + bw)}<br>${pct(((p0 + bw / 2) / price - 1) * 100, 1)}<br>${t('intensity')}: ${Math.round(bins[b] / mx * 100)}/100`, e.clientX, e.clientY); });
+  svg.addEventListener('mouseleave', hideTip);
 }
 
 // ---------- календар ----------
@@ -561,15 +670,37 @@ function buildEvents(from, to) {
   }
   return out.filter(e => e.ts >= from && e.ts <= to && (!state.calHigh || e.imp === 'High')).sort((a, b) => a.ts - b.ts);
 }
+let calEvents = [];
+const pad2 = (n) => String(n).padStart(2, '0');
+const icsDate = (d) => `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}00Z`;
+function openEvent(e) {
+  let m = $('#modal'); if (!m) { m = document.createElement('div'); m.id = 'modal'; m.className = 'modal'; document.body.appendChild(m); m.addEventListener('click', ev => { if (ev.target === m || ev.target.closest('[data-mclose]')) m.hidden = true; }); }
+  const diff = e.ts - Date.now(), abs = Math.abs(diff), dd = Math.floor(abs / 864e5), hh = Math.floor(abs % 864e5 / 36e5), mm = Math.floor(abs % 36e5 / 6e4);
+  const left = [dd && dd + ' ' + t('d_'), hh && hh + ' ' + t('h_'), !dd && mm + ' ' + t('m_')].filter(Boolean).join(' ');
+  const when = e.ts.toLocaleDateString(LOC(), {weekday:'long', day:'numeric', month:'long', year:'numeric'}) + (e.allDay ? '' : ', ' + hhmm(e.ts) + ' (' + t('evLocal') + ')');
+  m.innerHTML = `<div class="m-card"><div class="m-top"><span class="m-kind" style="background:${KCOL[e.kind]}">${esc(t('ev_' + e.kind))}</span><button class="icon-btn sm" data-mclose>✕</button></div>
+    <h3>${esc(e.title)}</h3>
+    <div class="m-grid"><div class="muted small">${t('evTime')}</div><div>${esc(when)}<div class="muted small">${diff > 0 ? t('evIn', {t: left}) : t('evPassed')}</div></div>
+    <div class="muted small">${t('evImp')}</div><div><span class="imp-dot ${e.imp}"></span> ${t('impact_' + e.imp)}</div>
+    ${e.vals ? `<div class="muted small">${t('dataAsOf')}</div><div>${esc(e.vals)}</div>` : ''}</div>
+    ${e.why ? `<p>${esc(e.why)}</p>` : ''}
+    <div class="m-what"><b>${t('evWhat')}</b><p>${esc(t('k_' + e.kind))}</p></div>
+    <div class="m-act">${e.allDay ? '' : `<button class="btn" id="m-ics">📅 ${t('evAddCal')}</button>`}<button class="btn primary" data-mclose>${t('close')}</button></div></div>`;
+  m.hidden = false;
+  const ics = $('#m-ics'); if (ics) ics.addEventListener('click', () => {
+    const end = new Date(e.ts.getTime() + 30 * 6e4), body = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//finadvisor//UA', 'BEGIN:VEVENT', `UID:${icsDate(e.ts)}-${e.kind}@finadvisor`, `DTSTAMP:${icsDate(new Date())}`, `DTSTART:${icsDate(e.ts)}`, `DTEND:${icsDate(end)}`, `SUMMARY:${e.title.replace(/[,;]/g, ' ')}`, `DESCRIPTION:${(e.why || '').replace(/[,;\n]/g, ' ')}`, 'BEGIN:VALARM', 'TRIGGER:-PT30M', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], {type: 'text/calendar'})); a.download = 'event.ics'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+}
 const KCOL = {fed:'#ef4444', cpi:'#f97316', jobs:'#eab308', ecb:'#3b82f6', holiday:'#94a3b8', opex:'#a78bfa', cexp:'#ec4899', brief:'#22c55e', ff:'#06b6d4'};
 function evRow(e) {
-  const time = e.allDay ? '' : hhmm(e.ts);
-  return `<div class="ev ${e.imp}"><span class="ev-k" style="background:${KCOL[e.kind] || 'var(--muted)'}"></span><div class="ev-d">${e.ts.toLocaleDateString(LOC(), {weekday:'short', day:'numeric', month:'short'})}${time ? '<br>' + time : ''}</div><div><div class="ev-t">${esc(e.title)}</div>${e.why || e.vals ? `<div class="muted small">${esc([e.vals, e.why].filter(Boolean).join(' — '))}</div>` : ''}</div><span class="imp-dot" title="${t('impact_' + e.imp)}"></span></div>`;
+  const time = e.allDay ? '' : hhmm(e.ts), idx = calEvents.indexOf(e);
+  return `<div class="ev ${e.imp}" data-ev="${idx}" role="button" tabindex="0"><span class="ev-k" style="background:${KCOL[e.kind] || 'var(--muted)'}"></span><div class="ev-d">${e.ts.toLocaleDateString(LOC(), {weekday:'short', day:'numeric', month:'short'})}${time ? '<br>' + time : ''}</div><div><div class="ev-t">${esc(e.title)}</div>${e.why || e.vals ? `<div class="muted small">${esc([e.vals, e.why].filter(Boolean).join(' — '))}</div>` : ''}</div><span class="imp-dot" title="${t('impact_' + e.imp)}"></span></div>`;
 }
 function renderCal() {
   const el = $('#cal'), now = new Date(), from = new Date(now.getFullYear(), now.getMonth(), now.getDate()), to = new Date(from); to.setDate(to.getDate() + state.calRange);
-  $$('#cal-range button').forEach(b => b.classList.toggle('on', +b.dataset.v === state.calRange)); $$('#cal-view button').forEach(b => b.classList.toggle('on', b.dataset.v === state.calView)); $('#cal-high').checked = state.calHigh;
-  const ev = buildEvents(from, to);
+  $$('#cal-range button').forEach(b => b.classList.toggle('on', +b.dataset.v === state.calRange)); $$('#bb-per button').forEach(b => b.classList.toggle('on', b.dataset.v === state.bbPer)); $$('#cal-view button').forEach(b => b.classList.toggle('on', b.dataset.v === state.calView)); $('#cal-high').checked = state.calHigh;
+  const ev = buildEvents(from, to); calEvents = ev;
   const legend = `<div class="cal-leg">${['fed', 'cpi', 'jobs', 'ecb', 'ff', 'opex', 'cexp', 'holiday', 'brief'].map(k => `<span><i style="background:${KCOL[k]}"></i>${t('ev_' + k)}</span>`).join('')}</div>`;
   if (state.calView === 'list') {
     let html = '', lastDay = '';
@@ -587,7 +718,7 @@ function renderCal() {
     for (let i = 0; i < first; i++) html += '<div class="dc empty"></div>';
     for (let d = 1; d <= dim; d++) {
       const dt = new Date(m.getFullYear(), m.getMonth(), d), key = ymd(dt), es = byDay[key] || [], out = dt < from || dt > to;
-      const chips = compact ? `<div class="dots">${es.slice(0, 6).map(e => `<i style="background:${KCOL[e.kind]}"></i>`).join('')}</div>` : es.slice(0, 3).map(e => `<span class="cc" style="--c:${KCOL[e.kind]}">${esc(e.title.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').slice(0, 22))}</span>`).join('') + (es.length > 3 ? `<span class="more-n">+${es.length - 3}</span>` : '');
+      const chips = compact ? `<div class="dots">${es.slice(0, 6).map(e => `<i style="background:${KCOL[e.kind]}"></i>`).join('')}</div>` : es.slice(0, 3).map(e => `<span class="cc" data-ev="${calEvents.indexOf(e)}" style="--c:${KCOL[e.kind]}">${esc(e.title.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').slice(0, 22))}</span>`).join('') + (es.length > 3 ? `<span class="more-n">+${es.length - 3}</span>` : '');
       html += `<button class="dc${out ? ' out' : ''}${key === ymd(now) ? ' today' : ''}${key === state.calDay ? ' sel' : ''}${es.some(e => e.imp === 'High') ? ' hi' : ''}" data-day="${key}"><span class="dnum">${d}</span>${chips}</button>`;
     }
     html += '</div></div>';
@@ -732,7 +863,7 @@ async function tick() {
   let ok = false;
   try { Object.assign(state.tickers, await fetchTickers()); ok = true; }
   catch { const fb = await fetchTickersFallback(); if (Object.keys(fb).length) { Object.assign(state.tickers, fb); ok = true; } }
-  if (ok) { state.tickAt = Date.now(); store.set('tickers', state.tickers); store.set('tickAt', state.tickAt); renderWatch(); renderPortfolio(); renderChartHead(); checkPriceAlerts(); renderSince(); }
+  if (ok) { pushPriceBuf(); state.tickAt = Date.now(); store.set('tickers', state.tickers); store.set('tickAt', state.tickAt); renderWatch(); renderPortfolio(); renderChartHead(); checkPriceAlerts(); renderSince(); }
   setStatus();
 }
 async function loadSparks() {
@@ -785,7 +916,7 @@ function initCollapse() {
     const closed = !!saved[sec.id]; sec.classList.toggle('closed', closed);
     h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', String(!closed));
     const flip = () => { const c = !sec.classList.contains('closed'); sec.classList.toggle('closed', c); h.setAttribute('aria-expanded', String(!c)); const s = store.get('collapsed', {}); s[sec.id] = c; store.set('collapsed', s);
-      if (!c) { if (sec.id === 'sec-chart') redrawChart(); if (sec.id === 'sec-bubbles') renderBubbles(); if (sec.id === 'sec-liq') loadLiq(); } };
+      if (!c) { if (sec.id === 'sec-chart') redrawChart(); if (sec.id === 'sec-bubbles') loadBubbles(); if (sec.id === 'sec-liq') loadLiq(); } };
     h.addEventListener('click', flip); h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
   });
 }
@@ -821,14 +952,20 @@ function init() {
   $('#mk-table thead').addEventListener('click', e => { const th = e.target.closest('th[data-k]'); if (!th) return; const k = th.dataset.k; state.mkSort = [k, state.mkSort[0] === k ? -state.mkSort[1] : (k === 'market_cap_rank' || k === 'name' ? 1 : -1)]; renderMarkets(); });
   $('#mk-rows').addEventListener('click', e => { const s = e.target.closest('[data-star]'); if (s) { e.stopPropagation(); const id = s.dataset.star; setWatch(WATCH.includes(id) ? WATCH.filter(x => x !== id) : [...WATCH, id]); renderMarkets(); tick(); return; } const tr = e.target.closest('tr[data-sym]'); if (tr) openSym(tr.dataset.sym); });
   $$('#mk-trend,#mk-gain,#mk-lose').forEach(el => el.addEventListener('click', e => { const r = e.target.closest('[data-sym]'); if (r) openSym(r.dataset.sym); }));
-  seg('#bb-per', b => { state.bbPer = b.dataset.v; renderBubbles(); });
-  seg('#bb-size', b => { state.bbSize = b.dataset.v; bbCache = null; renderBubbles(); });
+  seg('#bb-per', b => { state.bbPer = b.dataset.v; store.set('bbPer', state.bbPer); state.bbItems = null; loadBubbles(); });
+  seg('#bb-size', b => { state.bbSize = b.dataset.v; drawBubbles(); });
   $('#liq-coin').addEventListener('change', e => { state.liqCoin = e.target.value; store.set('liqCoin', state.liqCoin); loadLiq(); });
   seg('#liq-range', b => { state.liqDays = +b.dataset.v; loadLiq(); });
   seg('#cal-range', b => { state.calRange = +b.dataset.v; store.set('calRange', state.calRange); renderCal(); });
   seg('#cal-view', b => { state.calView = b.dataset.v; store.set('calView', state.calView); renderCal(); });
   $('#cal-high').addEventListener('change', e => { state.calHigh = e.target.checked; store.set('calHigh', state.calHigh); renderCal(); });
-  $('#cal').addEventListener('click', e => { const d = e.target.closest('[data-day]'); if (!d) return; state.calDay = state.calDay === d.dataset.day ? null : d.dataset.day; renderCal(); });
+  $('#cal').addEventListener('click', e => { const ev = e.target.closest('[data-ev]'); if (ev) { e.stopPropagation(); const x = calEvents[+ev.dataset.ev]; if (x) openEvent(x); return; } const d = e.target.closest('[data-day]'); if (!d) return; state.calDay = state.calDay === d.dataset.day ? null : d.dataset.day; renderCal(); });
+  $('#cal').addEventListener('keydown', e => { if (e.key === 'Enter') { const ev = e.target.closest('[data-ev]'); if (ev && calEvents[+ev.dataset.ev]) openEvent(calEvents[+ev.dataset.ev]); } });
+  document.addEventListener('click', e => { const b = e.target.closest('.info'); if (b) { e.stopPropagation(); e.preventDefault(); showHelp(b); return; } const pop = $('#help-pop'); if (pop && !pop.hidden && !e.target.closest('#help-pop')) pop.hidden = true; }, true);
+  $('#tips-tog').addEventListener('change', e => { store.set('tips', e.target.checked); applyLook(); });
+  $('#bubbles').addEventListener('mousemove', bubbleTip); $('#bubbles').addEventListener('mouseleave', hideTip);
+  $('#bubbles').addEventListener('click', e => { const g = e.target.closest('.bub'); if (g) openSym(g.dataset.sym); });
+  initDrag();
   $('#since-x').addEventListener('click', () => { $('#sec-since').hidden = true; });
   $('#refresh').addEventListener('click', () => refreshAll());
   $('#bell').addEventListener('click', () => openPanel('drawer'));
@@ -867,6 +1004,7 @@ function init() {
   setInterval(loadBrief, T_BRIEF);
   setInterval(() => { if (document.visibilityState === 'visible') loadMarkets(); }, T_MK);
   setInterval(() => { if (document.visibilityState === 'visible') loadLiq(); }, T_LIQ);
+  setInterval(() => { if (document.visibilityState === 'visible') loadBubbles(); }, 30e3);
   setInterval(() => { if (Date.now() - state.last >= T_FULL) refreshAll(); }, 60e3);
   setInterval(() => { renderFeed(); setStatus(); }, 60e3);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveSnap(); else { tick(); loadLive(); if (Date.now() - state.last >= T_FULL) refreshAll(); } });

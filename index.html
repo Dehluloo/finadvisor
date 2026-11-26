@@ -36,7 +36,7 @@
   <section class="card hero" id="sec-pulse" data-sec="pulse">
     <div class="hero-light"></div>
     <div class="hero-body">
-      <div class="eyebrow" id="hero-date"></div>
+      <div class="eyebrow"><span id="hero-date"></span><span class="hero-i"></span></div>
       <h1 id="hero-signal">—</h1>
       <p id="hero-summary" class="lead"></p>
       <div class="chips" id="hero-chips"></div>
@@ -97,10 +97,11 @@
   <section class="card" id="sec-bubbles" data-sec="bubbles" data-collapse>
     <div class="head"><h2 data-i18n="bubbles">Бульбашки ринку</h2>
       <div class="row-g">
-        <div class="seg small" id="bb-per"><button data-v="1h">1h</button><button data-v="24h" class="on">24h</button><button data-v="7d">7d</button></div>
+        <div class="seg small" id="bb-per"><button data-v="1m">1m</button><button data-v="5m">5m</button><button data-v="15m">15m</button><button data-v="1h">1h</button><button data-v="24h">24h</button><button data-v="7d">7d</button></div>
         <div class="seg small" id="bb-size"><button data-v="chg" class="on" data-i18n="bySize_chg">за зміною</button><button data-v="mcap" data-i18n="bySize_mcap">за капіталізацією</button></div>
       </div>
     </div>
+    <div class="muted small bb-note" id="bb-note"></div>
     <div class="bubbles" id="bubbles"></div>
   </section>
 
@@ -203,6 +204,7 @@
     <div class="set-row"><span data-i18n="currency">Валюта</span><div class="seg small" id="cur-seg"><button data-v="USD">$ USD</button><button data-v="EUR">€ EUR</button><button data-v="UAH">₴ UAH</button><button data-v="RON">lei RON</button></div></div>
     <div class="set-row"><span data-i18n="theme">Тема</span><div class="seg small" id="theme-seg"><button data-v="auto" data-i18n="auto_t">Авто</button><button data-v="dark" data-i18n="dark">Темна</button><button data-v="light" data-i18n="light">Світла</button></div></div>
     <div class="set-row"><span data-i18n="accent">Колір акценту</span><div class="swatches" id="accent-sw"></div></div>
+    <div class="set-row"><span data-i18n="tips_on">Підказки для новачків</span><label class="switch"><input type="checkbox" id="tips-tog" checked><i></i></label></div>
     <div class="set-row"><span data-i18n="density">Щільність</span><div class="seg small" id="dens-seg"><button data-v="comfy" data-i18n="comfy">Звичайна</button><button data-v="compact" data-i18n="compact">Компактна</button></div></div>
 
     <h3 class="group" data-i18n="layout">Що показувати на головній</h3>
