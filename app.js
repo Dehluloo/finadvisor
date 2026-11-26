@@ -1,7 +1,7 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.1.0';
+const VERSION = '3.2.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
@@ -138,8 +138,8 @@ const state = {
   tickers: store.get('tickers', {}), allInst: store.get('allInst', []), allTick: null, tickAt: store.get('tickAt', 0), sparks: store.get('sparks', {}),
   fng: store.get('fng', null), btcDaily: store.get('btcDaily', null), last: store.get('last', 0),
   brief: window.BRIEF || {}, briefUk: window.BRIEF || {}, live: store.get('live', null), events: store.get('events', []), mk: store.get('mk', null), global: store.get('global', null), trend: store.get('trend', []),
-  newsF: 'all', liveCat: 'all', liveSent: 'all', feedN: 12, mkN: 25, mkSort: ['market_cap_rank', 1], mkQ: '', bbPer: store.get('bbPer', '24h'), bbSize: 'chg', bbItems: null,
-  liqCoin: store.get('liqCoin', 'BTC'), liqDays: 7, calRange: store.get('calRange', 31), calView: store.get('calView', 'grid'), calHigh: store.get('calHigh', false), calDay: null,
+  newsF: 'all', liveCat: 'all', liveSent: 'all', feedN: 12, mkN: 10, mkFavOnly: false, mkSort: ['market_cap_rank', 1], mkQ: '', bbPer: store.get('bbPer', '24h'), bbSize: 'chg', bbItems: null,
+  liqCoin: store.get('liqCoin', 'BTC'), liqDays: 7, calRange: [31, 92, 183].includes(store.get('calRange', 31)) ? store.get('calRange', 31) : 31, calMonth: 0, calView: store.get('calView', 'grid'), calHigh: store.get('calHigh', false), calDay: null,
   editWatch: false, showOrig: {}
 };
 
@@ -485,16 +485,19 @@ function renderMarkets() {
   const s24 = M.filter(c => c.price_change_percentage_24h_in_currency != null && c.total_volume > 5e6);
   $('#mk-gain').innerHTML = s24.slice().sort((a, b) => b.price_change_percentage_24h_in_currency - a.price_change_percentage_24h_in_currency).slice(0, 7).map(coinLine).join('') || '<div class="muted">—</div>';
   $('#mk-lose').innerHTML = s24.slice().sort((a, b) => a.price_change_percentage_24h_in_currency - b.price_change_percentage_24h_in_currency).slice(0, 7).map(coinLine).join('') || '<div class="muted">—</div>';
-  const [k, dir] = state.mkSort, q = state.mkQ.toUpperCase();
-  const rows = M.filter(c => !q || c.symbol.includes(q) || c.name.toUpperCase().includes(q)).sort((a, b) => { const x = a[k], y = b[k]; if (typeof x === 'string') return x.localeCompare(y) * dir; return ((x ?? -Infinity) - (y ?? -Infinity)) * dir; });
-  $('#mk-rows').innerHTML = rows.slice(0, state.mkN).map(c => {
-    const cid = cdcFor(c.symbol), inW = cid && WATCH.includes(cid), up7 = (c.price_change_percentage_7d_in_currency || 0) >= 0;
-    return `<tr data-sym="${esc(c.symbol)}"><td class="muted">${c.market_cap_rank || ''}</td><td><div class="coin"><img src="${esc(c.image)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(c.symbol)}</b><span class="muted nm hide-s">${esc(c.name)}</span></div></td>
+  const [k, dir] = state.mkSort, q = state.mkQ.toUpperCase(), fav = new Set(store.get('mkFav', []));
+  const sorted = M.filter(c => (!q || c.symbol.includes(q) || c.name.toUpperCase().includes(q)) && (!state.mkFavOnly || fav.has(c.id))).sort((a, b) => { const x = a[k], y = b[k]; if (typeof x === 'string') return x.localeCompare(y) * dir; return ((x ?? -Infinity) - (y ?? -Infinity)) * dir; });
+  const rows = [...sorted.filter(c => fav.has(c.id)), ...sorted.filter(c => !fav.has(c.id))];
+  const shown = Math.max(state.mkN, rows.filter(c => fav.has(c.id)).length);
+  $('#mk-rows').innerHTML = rows.slice(0, shown).map(c => {
+    const cid = cdcFor(c.symbol), inW = cid && WATCH.includes(cid), up7 = (c.price_change_percentage_7d_in_currency || 0) >= 0, isF = fav.has(c.id);
+    return `<tr data-sym="${esc(c.symbol)}"${isF ? ' class="fav"' : ''}><td class="muted"><button class="star${isF ? ' on' : ''}" data-fav="${esc(c.id)}" title="${t('favTip')}">${isF ? '★' : '☆'}</button>${c.market_cap_rank || ''}</td><td><div class="coin"><img src="${esc(c.image)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(c.symbol)}</b><span class="muted nm hide-s">${esc(c.name)}</span></div></td>
       <td class="r">${money(c.current_price)}</td><td class="r ${cls(c.price_change_percentage_1h_in_currency)}">${pct(c.price_change_percentage_1h_in_currency, 1)}</td><td class="r ${cls(c.price_change_percentage_24h_in_currency)}">${pct(c.price_change_percentage_24h_in_currency, 1)}</td><td class="r ${cls(c.price_change_percentage_7d_in_currency)}">${pct(c.price_change_percentage_7d_in_currency, 1)}</td>
       <td class="r hide-s">${moneyBig(c.market_cap)}</td><td class="r hide-s">${moneyBig(c.total_volume)}</td><td class="hide-s spark7">${sparkSVG(c.spark, up7 ? 'var(--up)' : 'var(--dn)', 28)}</td>
-      <td>${cid ? `<button class="star${inW ? ' on' : ''}" data-star="${cid}" title="${inW ? t('inWatch') : t('addWatch')}">${inW ? '★' : '☆'}</button>` : ''}</td></tr>`;
+      <td>${cid ? `<button class="addw${inW ? ' on' : ''}" data-star="${cid}" title="${inW ? t('inWatch') : t('addWatch')}">${inW ? '✓' : '+'}</button>` : ''}</td></tr>`;
   }).join('');
-  $('#mk-more').hidden = rows.length <= state.mkN;
+  $('#mk-more').hidden = rows.length <= shown; $('#mk-less').hidden = state.mkN <= 10;
+  $('#mk-favonly').classList.toggle('on', state.mkFavOnly);
   $$('#mk-table th[data-k]').forEach(th => { th.classList.toggle('sorted', th.dataset.k === k); th.dataset.dir = th.dataset.k === k ? (dir > 0 ? '↑' : '↓') : ''; });
 }
 function openSym(sym) {
@@ -708,24 +711,25 @@ function renderCal() {
     el.innerHTML = legend + `<div class="ecal">${html || `<div class="muted">${t('ecalEmpty')}</div>`}</div>`; return;
   }
   const byDay = {}; for (const e of ev) (byDay[ymd(e.ts)] = byDay[ymd(e.ts)] || []).push(e);
-  const months = [], c = new Date(from.getFullYear(), from.getMonth(), 1); while (c <= to) { months.push(new Date(c)); c.setMonth(c.getMonth() + 1); }
+  const nMonths = (to.getFullYear() - from.getFullYear()) * 12 + to.getMonth() - from.getMonth();
+  state.calMonth = clamp(state.calMonth, 0, nMonths);
+  const m = new Date(from.getFullYear(), from.getMonth() + state.calMonth, 1);
   const wd = [...Array(7)].map((_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(LOC(), {weekday:'short'}));
-  const compact = state.calRange > 40;
-  let html = `<div class="months${compact ? ' compact' : ''}">`;
-  for (const m of months) {
-    html += `<div class="month"><div class="m-h">${m.toLocaleDateString(LOC(), {month:'long', year:'numeric'})}</div><div class="m-g">${wd.map(w => `<div class="wd">${w}</div>`).join('')}`;
-    const first = (m.getDay() + 6) % 7, dim = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
-    for (let i = 0; i < first; i++) html += '<div class="dc empty"></div>';
-    for (let d = 1; d <= dim; d++) {
-      const dt = new Date(m.getFullYear(), m.getMonth(), d), key = ymd(dt), es = byDay[key] || [], out = dt < from || dt > to;
-      const chips = compact ? `<div class="dots">${es.slice(0, 6).map(e => `<i style="background:${KCOL[e.kind]}"></i>`).join('')}</div>` : es.slice(0, 3).map(e => `<span class="cc" data-ev="${calEvents.indexOf(e)}" style="--c:${KCOL[e.kind]}">${esc(e.title.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').slice(0, 22))}</span>`).join('') + (es.length > 3 ? `<span class="more-n">+${es.length - 3}</span>` : '');
-      html += `<button class="dc${out ? ' out' : ''}${key === ymd(now) ? ' today' : ''}${key === state.calDay ? ' sel' : ''}${es.some(e => e.imp === 'High') ? ' hi' : ''}" data-day="${key}"><span class="dnum">${d}</span>${chips}</button>`;
-    }
-    html += '</div></div>';
+  let html = `<div class="month"><div class="m-nav"><button class="icon-btn sm" data-mnav="-1"${state.calMonth <= 0 ? ' disabled' : ''}>‹</button><div class="m-h">${m.toLocaleDateString(LOC(), {month:'long', year:'numeric'})}</div><button class="icon-btn sm" data-mnav="1"${state.calMonth >= nMonths ? ' disabled' : ''}>›</button></div><div class="m-g">${wd.map(w => `<div class="wd">${w}</div>`).join('')}`;
+  const first = (m.getDay() + 6) % 7, dim = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+  for (let i = 0; i < first; i++) html += '<div class="dc empty"></div>';
+  for (let d = 1; d <= dim; d++) {
+    const dt = new Date(m.getFullYear(), m.getMonth(), d), key = ymd(dt), es = byDay[key] || [], out = dt < from || dt > to;
+    const chips = es.slice(0, 3).map(e => `<span class="cc" data-ev="${calEvents.indexOf(e)}" style="--c:${KCOL[e.kind]}">${esc(e.title.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').slice(0, 22))}</span>`).join('') + (es.length > 3 ? `<span class="more-n">+${es.length - 3}</span>` : '');
+    const dots = `<div class="dots">${es.slice(0, 5).map(e => `<i style="background:${KCOL[e.kind]}"></i>`).join('')}</div>`;
+    html += `<button class="dc${out ? ' out' : ''}${key === ymd(now) ? ' today' : ''}${key === state.calDay ? ' sel' : ''}${es.some(e => e.imp === 'High') ? ' hi' : ''}" data-day="${key}"><span class="dnum">${d}</span>${chips}${dots}</button>`;
   }
-  html += '</div>';
+  html += '</div></div>';
   const sel = state.calDay && byDay[state.calDay];
-  el.innerHTML = legend + html + `<div class="day-detail">${sel ? `<div class="day-h">${new Date(state.calDay + 'T12:00:00').toLocaleDateString(LOC(), {weekday:'long', day:'numeric', month:'long'})}</div>` + sel.map(evRow).join('') : `<div class="muted small">${t('pickDay')}</div>`}</div>`;
+  const monthEv = ev.filter(e => e.ts.getMonth() === m.getMonth() && e.ts.getFullYear() === m.getFullYear());
+  let list = '', lastDay = '';
+  for (const e of (sel || monthEv)) { const day = ymd(e.ts); if (day !== lastDay) { list += `<div class="day-h">${e.ts.toLocaleDateString(LOC(), {weekday:'long', day:'numeric', month:'long'})}</div>`; lastDay = day; } list += evRow(e); }
+  el.innerHTML = legend + `<div class="cal-split">${html}<div class="day-detail">${list || `<div class="muted small">${t('ecalEmpty')}</div>`}</div></div>`;
 }
 async function loadEvents() { try { const j = await getJSON(BASE + 'data/events.json?t=' + Math.floor(Date.now() / 36e5), 10000); if (j && j.events) { state.events = j.events; store.set('events', j.events); } } catch {} renderCal(); }
 
@@ -947,19 +951,21 @@ function init() {
   seg('#live-sent', b => { state.liveSent = b.dataset.s; state.feedN = 12; renderFeed(); });
   $('#feed-more').addEventListener('click', () => { state.feedN += 20; renderFeed(); });
   $('#feed').addEventListener('click', e => { const b = e.target.closest('[data-orig]'); if (!b) return; const id = b.dataset.orig; state.showOrig[id] = !state.showOrig[id]; renderFeed(); });
-  $('#mk-q').addEventListener('input', e => { state.mkQ = e.target.value.trim(); state.mkN = 25; renderMarkets(); });
-  $('#mk-more').addEventListener('click', () => { state.mkN += 50; renderMarkets(); });
+  $('#mk-q').addEventListener('input', e => { state.mkQ = e.target.value.trim(); state.mkN = 10; renderMarkets(); });
+  $('#mk-more').addEventListener('click', () => { state.mkN = state.mkN < 25 ? 25 : state.mkN < 50 ? 50 : state.mkN + 50; renderMarkets(); });
+  $('#mk-less').addEventListener('click', () => { state.mkN = 10; renderMarkets(); $('#sec-markets').scrollIntoView({behavior:'smooth', block:'start'}); });
+  $('#mk-favonly').addEventListener('click', () => { state.mkFavOnly = !state.mkFavOnly; renderMarkets(); });
   $('#mk-table thead').addEventListener('click', e => { const th = e.target.closest('th[data-k]'); if (!th) return; const k = th.dataset.k; state.mkSort = [k, state.mkSort[0] === k ? -state.mkSort[1] : (k === 'market_cap_rank' || k === 'name' ? 1 : -1)]; renderMarkets(); });
-  $('#mk-rows').addEventListener('click', e => { const s = e.target.closest('[data-star]'); if (s) { e.stopPropagation(); const id = s.dataset.star; setWatch(WATCH.includes(id) ? WATCH.filter(x => x !== id) : [...WATCH, id]); renderMarkets(); tick(); return; } const tr = e.target.closest('tr[data-sym]'); if (tr) openSym(tr.dataset.sym); });
+  $('#mk-rows').addEventListener('click', e => { const f = e.target.closest('[data-fav]'); if (f) { e.stopPropagation(); const id = f.dataset.fav, fv = store.get('mkFav', []); store.set('mkFav', fv.includes(id) ? fv.filter(x => x !== id) : [...fv, id]); renderMarkets(); return; } const s = e.target.closest('[data-star]'); if (s) { e.stopPropagation(); const id = s.dataset.star; setWatch(WATCH.includes(id) ? WATCH.filter(x => x !== id) : [...WATCH, id]); renderMarkets(); tick(); return; } const tr = e.target.closest('tr[data-sym]'); if (tr) openSym(tr.dataset.sym); });
   $$('#mk-trend,#mk-gain,#mk-lose').forEach(el => el.addEventListener('click', e => { const r = e.target.closest('[data-sym]'); if (r) openSym(r.dataset.sym); }));
   seg('#bb-per', b => { state.bbPer = b.dataset.v; store.set('bbPer', state.bbPer); state.bbItems = null; loadBubbles(); });
   seg('#bb-size', b => { state.bbSize = b.dataset.v; drawBubbles(); });
   $('#liq-coin').addEventListener('change', e => { state.liqCoin = e.target.value; store.set('liqCoin', state.liqCoin); loadLiq(); });
   seg('#liq-range', b => { state.liqDays = +b.dataset.v; loadLiq(); });
-  seg('#cal-range', b => { state.calRange = +b.dataset.v; store.set('calRange', state.calRange); renderCal(); });
+  seg('#cal-range', b => { state.calMonth = 0; state.calRange = +b.dataset.v; store.set('calRange', state.calRange); renderCal(); });
   seg('#cal-view', b => { state.calView = b.dataset.v; store.set('calView', state.calView); renderCal(); });
   $('#cal-high').addEventListener('change', e => { state.calHigh = e.target.checked; store.set('calHigh', state.calHigh); renderCal(); });
-  $('#cal').addEventListener('click', e => { const ev = e.target.closest('[data-ev]'); if (ev) { e.stopPropagation(); const x = calEvents[+ev.dataset.ev]; if (x) openEvent(x); return; } const d = e.target.closest('[data-day]'); if (!d) return; state.calDay = state.calDay === d.dataset.day ? null : d.dataset.day; renderCal(); });
+  $('#cal').addEventListener('click', e => { const mn = e.target.closest('[data-mnav]'); if (mn) { state.calMonth += +mn.dataset.mnav; state.calDay = null; renderCal(); return; } const ev = e.target.closest('[data-ev]'); if (ev) { e.stopPropagation(); const x = calEvents[+ev.dataset.ev]; if (x) openEvent(x); return; } const d = e.target.closest('[data-day]'); if (!d) return; state.calDay = state.calDay === d.dataset.day ? null : d.dataset.day; renderCal(); });
   $('#cal').addEventListener('keydown', e => { if (e.key === 'Enter') { const ev = e.target.closest('[data-ev]'); if (ev && calEvents[+ev.dataset.ev]) openEvent(calEvents[+ev.dataset.ev]); } });
   document.addEventListener('click', e => { const b = e.target.closest('.info'); if (b) { e.stopPropagation(); e.preventDefault(); showHelp(b); return; } const pop = $('#help-pop'); if (pop && !pop.hidden && !e.target.closest('#help-pop')) pop.hidden = true; }, true);
   $('#tips-tog').addEventListener('change', e => { store.set('tips', e.target.checked); applyLook(); });

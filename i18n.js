@@ -1,6 +1,6 @@
 window.I18N = {
 uk: {
-  app:'Фінансовий радник', refresh:'Оновити', notifications:'Сповіщення', settings:'Налаштування', chart:'Графік',
+  app:'FinRAD', refresh:'Оновити', notifications:'Сповіщення', settings:'Налаштування', chart:'Графік',
   market:'Мій список', tapAsset:'Натисніть — графік', edit:'Редагувати', done:'Готово', addAsset:'Додати актив', searchAsset:'Пошук: BTC, PEPE, NVDA…',
   crypto:'Криптовалюти', stocks:'Акції, фонди, золото', perpsGrp:'Контракти (PERP)',
   liveNews:'Новини наживо', all:'Усі', important:'Важливі', cat_crypto:'Крипто', cat_economy:'Економіка', cat_politics:'Політика', cat_geo:'Геополітика', cat_markets:'Ринки',
@@ -51,7 +51,7 @@ uk: {
   view:'Вигляд', list:'Список', grid:'Календар', range:'Період', r1w:'Тиждень', r1m:'Місяць', r3m:'3 місяці', r6m:'Пів року', onlyHigh:'Лише важливі',
   ev_fed:'ФРС', ev_cpi:'Інфляція', ev_jobs:'Робочі місця', ev_ecb:'ЄЦБ', ev_holiday:'Вихідний', ev_opex:'Експірація опціонів', ev_cexp:'Експірація крипто-опціонів', ev_brief:'З брифу', ev_ff:'Макродані',
   opexT:'Експірація опціонів на акції США', opexQ:'Квартальна експірація («потрійна відьма»)', opexW:'Можлива підвищена волатильність акцій.',
-  cexpT:'Експірація крипто-опціонів (Deribit, 11:00 за Києвом)', cexpQ:'Квартальна експірація крипто-опціонів', cexpW:'Ціна BTC/ETH може «тягнутися» до рівнів з найбільшою кількістю опціонів.',
+  cexpT:'Експірація крипто-опціонів (Deribit, 08:00 UTC)', cexpQ:'Квартальна експірація крипто-опціонів', cexpW:'Ціна BTC/ETH може «тягнутися» до рівнів з найбільшою кількістю опціонів.',
   pickDay:'Оберіть день, щоб побачити події.', today:'Сьогодні',
   layout:'Що показувати на головній', layoutNote:'Поставте галочки на потрібних розділах. Стрілками змінюйте порядок.', reset:'Скинути',
   accent:'Колір акценту', density:'Щільність', comfy:'Звичайна', compact:'Компактна', currency:'Валюта',
@@ -65,7 +65,7 @@ uk: {
   sec_cal:'Календар', sec_outlook:'Прогноз', sec_weekly:'Огляд тижня', sec_portfolio:'Мій портфель', sec_tips:'Поради обережних інвесторів'
 },
 en: {
-  app:'Financial Advisor', refresh:'Refresh', notifications:'Notifications', settings:'Settings', chart:'Chart',
+  app:'FinRAD', refresh:'Refresh', notifications:'Notifications', settings:'Settings', chart:'Chart',
   market:'My watchlist', tapAsset:'Tap for chart', edit:'Edit', done:'Done', addAsset:'Add asset', searchAsset:'Search: BTC, PEPE, NVDA…',
   crypto:'Crypto', stocks:'Stocks, funds, gold', perpsGrp:'Contracts (PERP)',
   liveNews:'Live news', all:'All', important:'Important', cat_crypto:'Crypto', cat_economy:'Economy', cat_politics:'Politics', cat_geo:'Geopolitics', cat_markets:'Markets',
@@ -196,3 +196,5 @@ Object.assign(I18N.en, {
   h_portfolio:'Your portfolio: add an asset and amount — the app values it at the live price. Stored only on this device, never sent anywhere.',
   h_tips:'General principles cautious investors commonly follow. Not advice to buy or sell.'
 });
+Object.assign(I18N.uk, {less:'Показати менше', favOnly:'Обрані', favTip:'Позначити як обрану (закріпити вгорі)'});
+Object.assign(I18N.en, {less:'Show less', favOnly:'Favourites', favTip:'Mark as favourite (pin to top)'});

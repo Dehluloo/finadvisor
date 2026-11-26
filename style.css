@@ -422,3 +422,24 @@ th.r,td.r{text-align:right}
 .m-act{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 .imp-dot.High{background:var(--dn)} .imp-dot.Medium{background:var(--warn)} .imp-dot.Low{background:var(--muted)}
 .imp-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+
+/* 3.2 */
+.mk-btns{display:flex;gap:8px;margin-top:10px}
+.mk-btns .btn{flex:1;justify-content:center}
+#mk-favonly.on{background:var(--warn);color:#fff;border-color:transparent}
+.mk tr.fav{background:color-mix(in srgb,var(--warn) 7%,transparent)}
+.mk td:first-child{white-space:nowrap}
+.mk .star{font-size:15px;padding:0 6px 0 0}
+.addw{border:1px solid var(--line);background:var(--card2);border-radius:6px;width:24px;height:22px;cursor:pointer;color:var(--fg);font-weight:700}
+.addw.on{color:var(--up)}
+.cal-split{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.cal-split{grid-template-columns:1fr}}
+.cal-split .day-detail{margin-top:0;max-height:430px;overflow:auto;padding-right:4px}
+.cal-split .day-detail .day-h:first-child{margin-top:0}
+.m-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.m-nav .m-h{margin:0}
+.m-nav button:disabled{opacity:.3;cursor:default}
+.dc{min-height:58px}
+.dc .dots{margin-top:auto;justify-content:flex-start}
+.dc .cc{display:none}
+@media (min-width:1100px){.dc{min-height:64px}}

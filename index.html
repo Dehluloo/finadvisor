@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Фінансовий радник</title>
+<title>FinRAD</title>
 <meta name="theme-color" content="#0b0f17">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Радник">
+<meta name="apple-mobile-web-app-title" content="FinRAD">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -80,7 +80,7 @@
   </section>
 
   <section class="card" id="sec-markets" data-sec="markets" data-collapse>
-    <div class="head"><h2 data-i18n="markets">Ринок криптовалют</h2><input class="mini" id="mk-q" data-i18n-ph="search" placeholder="Пошук"></div>
+    <div class="head"><h2 data-i18n="markets">Ринок криптовалют</h2><div class="row-g"><button class="btn small ghost" id="mk-favonly">★ <span data-i18n="favOnly">Обрані</span></button><input class="mini" id="mk-q" data-i18n-ph="search" placeholder="Пошук"></div></div>
     <div class="stats" id="mk-stats"></div>
     <div class="three">
       <div class="mini-card"><div class="mc-h">🔥 <span data-i18n="trending">У тренді</span></div><div id="mk-trend"></div></div>
@@ -91,7 +91,7 @@
       <th data-k="market_cap_rank" data-i18n="rank">#</th><th data-k="name" data-i18n="coin">Монета</th><th data-k="current_price" class="r" data-i18n="price">Ціна</th>
       <th data-k="price_change_percentage_1h_in_currency" class="r" data-i18n="h1">1г</th><th data-k="price_change_percentage_24h_in_currency" class="r" data-i18n="h24">24г</th><th data-k="price_change_percentage_7d_in_currency" class="r" data-i18n="d7">7д</th>
       <th data-k="market_cap" class="r hide-s" data-i18n="mcap">Капіталізація</th><th data-k="total_volume" class="r hide-s" data-i18n="volume">Обсяг</th><th class="hide-s" data-i18n="last7">7 днів</th><th></th></tr></thead><tbody id="mk-rows"></tbody></table></div>
-    <button class="btn ghost more" id="mk-more" data-i18n="more">Показати ще</button>
+    <div class="mk-btns"><button class="btn ghost" id="mk-more" data-i18n="more">Показати ще</button><button class="btn ghost" id="mk-less" data-i18n="less">Показати менше</button></div>
   </section>
 
   <section class="card" id="sec-bubbles" data-sec="bubbles" data-collapse>
@@ -159,7 +159,7 @@
   <section class="card" id="sec-cal" data-sec="cal" data-collapse>
     <div class="head"><h2 data-i18n="calendar">Що нас чекає</h2>
       <div class="row-g">
-        <div class="seg small" id="cal-range"><button data-v="7" data-i18n="r1w">Тиждень</button><button data-v="31" class="on" data-i18n="r1m">Місяць</button><button data-v="92" data-i18n="r3m">3 місяці</button><button data-v="183" data-i18n="r6m">Пів року</button></div>
+        <div class="seg small" id="cal-range"><button data-v="31" class="on" data-i18n="r1m">Місяць</button><button data-v="92" data-i18n="r3m">3 місяці</button><button data-v="183" data-i18n="r6m">Пів року</button></div>
         <div class="seg small" id="cal-view"><button data-v="list" data-i18n="list">Список</button><button data-v="grid" class="on" data-i18n="grid">Календар</button></div>
         <label class="tog"><input type="checkbox" id="cal-high"> <span data-i18n="onlyHigh">Лише важливі</span></label>
       </div>
