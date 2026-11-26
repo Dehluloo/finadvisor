@@ -14,11 +14,10 @@ RSS = [
     ('Cointelegraph', 'https://cointelegraph.com/rss'),
     ('Decrypt', 'https://decrypt.co/feed'),
     ('The Block', 'https://www.theblock.co/rss.xml'),
-    ('CryptoPanic', 'https://cryptopanic.com/news/rss/'),
     ('CNBC', 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114'),
     ('CNBC Economy', 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258'),
     ('CNBC Finance', 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664'),
-    ('MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories'),
+    ('MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_marketpulse'),
     ('Federal Reserve', 'https://www.federalreserve.gov/feeds/press_all.xml'),
 ]
 TELEGRAM = ['WatcherGuru', 'cryptocurrency_media', 'Capitalizator_UA', 'tstamarkets_ua', 'trade_ultra']
