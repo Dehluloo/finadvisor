@@ -15,12 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Зібрати новини й дані
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: python3 tools/fetch_live.py
       - name: Зберегти
         run: |
           git config user.name "finadvisor-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/live.json
+          git add data/live.json data/tg.json data/tr_cache.json data/brief_en.json
           if git diff --cached --quiet; then echo "без змін"; exit 0; fi
           git commit -m "Живі дані $(date -u +%H:%M)"
           git pull --rebase -X theirs origin main || true

@@ -1,0 +1,447 @@
+{
+"updated": "2026-11-27",
+"events": [
+{
+"ts": "2026-12-09T14:00:00-05:00",
+"kind": "fed",
+"imp": "High",
+"title": {
+"uk": "Рішення ФРС щодо ставки + прогнози",
+"en": "Fed rate decision + projections"
+},
+"why": {
+"uk": "Головна подія для всіх ринків: ставка визначає, наскільки дорогі гроші. Через 30 хвилин — пресконференція голови ФРС.",
+"en": "The key event for all markets: the rate sets how expensive money is. Press conference 30 min later."
+}
+},
+{
+"ts": "2027-01-27T14:00:00-05:00",
+"kind": "fed",
+"imp": "High",
+"title": {
+"uk": "Рішення ФРС щодо ставки",
+"en": "Fed rate decision"
+},
+"why": {
+"uk": "Головна подія для всіх ринків: ставка визначає, наскільки дорогі гроші. Через 30 хвилин — пресконференція голови ФРС.",
+"en": "The key event for all markets: the rate sets how expensive money is. Press conference 30 min later."
+}
+},
+{
+"ts": "2027-03-17T14:00:00-04:00",
+"kind": "fed",
+"imp": "High",
+"title": {
+"uk": "Рішення ФРС щодо ставки + прогнози",
+"en": "Fed rate decision + projections"
+},
+"why": {
+"uk": "Головна подія для всіх ринків: ставка визначає, наскільки дорогі гроші. Через 30 хвилин — пресконференція голови ФРС.",
+"en": "The key event for all markets: the rate sets how expensive money is. Press conference 30 min later."
+}
+},
+{
+"ts": "2027-04-28T14:00:00-04:00",
+"kind": "fed",
+"imp": "High",
+"title": {
+"uk": "Рішення ФРС щодо ставки",
+"en": "Fed rate decision"
+},
+"why": {
+"uk": "Головна подія для всіх ринків: ставка визначає, наскільки дорогі гроші. Через 30 хвилин — пресконференція голови ФРС.",
+"en": "The key event for all markets: the rate sets how expensive money is. Press conference 30 min later."
+}
+},
+{
+"ts": "2027-06-09T14:00:00-04:00",
+"kind": "fed",
+"imp": "High",
+"title": {
+"uk": "Рішення ФРС щодо ставки + прогнози",
+"en": "Fed rate decision + projections"
+},
+"why": {
+"uk": "Головна подія для всіх ринків: ставка визначає, наскільки дорогі гроші. Через 30 хвилин — пресконференція голови ФРС.",
+"en": "The key event for all markets: the rate sets how expensive money is. Press conference 30 min later."
+}
+},
+{
+"ts": "2026-12-30T14:00:00-05:00",
+"kind": "fed",
+"imp": "Medium",
+"title": {
+"uk": "Протокол засідання ФРС",
+"en": "FOMC minutes"
+},
+"why": {
+"uk": "Подробиці дискусії ФРС: підказки щодо наступних кроків.",
+"en": "Details of the Fed debate: hints about next steps."
+}
+},
+{
+"ts": "2027-02-17T14:00:00-05:00",
+"kind": "fed",
+"imp": "Medium",
+"title": {
+"uk": "Протокол засідання ФРС",
+"en": "FOMC minutes"
+},
+"why": {
+"uk": "Подробиці дискусії ФРС: підказки щодо наступних кроків.",
+"en": "Details of the Fed debate: hints about next steps."
+}
+},
+{
+"ts": "2027-04-07T14:00:00-04:00",
+"kind": "fed",
+"imp": "Medium",
+"title": {
+"uk": "Протокол засідання ФРС",
+"en": "FOMC minutes"
+},
+"why": {
+"uk": "Подробиці дискусії ФРС: підказки щодо наступних кроків.",
+"en": "Details of the Fed debate: hints about next steps."
+}
+},
+{
+"ts": "2027-05-19T14:00:00-04:00",
+"kind": "fed",
+"imp": "Medium",
+"title": {
+"uk": "Протокол засідання ФРС",
+"en": "FOMC minutes"
+},
+"why": {
+"uk": "Подробиці дискусії ФРС: підказки щодо наступних кроків.",
+"en": "Details of the Fed debate: hints about next steps."
+}
+},
+{
+"ts": "2026-12-10T08:30:00-05:00",
+"kind": "cpi",
+"imp": "High",
+"title": {
+"uk": "Інфляція США (CPI) за листопад",
+"en": "US inflation (CPI) for November"
+},
+"why": {
+"uk": "Вища за прогноз інфляція — ризик вищих ставок і тиск на акції та крипту.",
+"en": "Hotter than expected inflation raises rate risk and weighs on stocks and crypto."
+}
+},
+{
+"ts": "2027-01-13T08:30:00-05:00",
+"kind": "cpi",
+"imp": "High",
+"title": {
+"uk": "Інфляція США (CPI) за грудень",
+"en": "US inflation (CPI) for December"
+},
+"why": {
+"uk": "Вища за прогноз інфляція — ризик вищих ставок і тиск на акції та крипту.",
+"en": "Hotter than expected inflation raises rate risk and weighs on stocks and crypto."
+}
+},
+{
+"ts": "2027-02-11T08:30:00-05:00",
+"kind": "cpi",
+"imp": "High",
+"title": {
+"uk": "Інфляція США (CPI) за січень",
+"en": "US inflation (CPI) for January"
+},
+"why": {
+"uk": "Вища за прогноз інфляція — ризик вищих ставок і тиск на акції та крипту.",
+"en": "Hotter than expected inflation raises rate risk and weighs on stocks and crypto."
+}
+},
+{
+"ts": "2027-03-10T08:30:00-05:00",
+"kind": "cpi",
+"imp": "High",
+"title": {
+"uk": "Інфляція США (CPI) за лютий",
+"en": "US inflation (CPI) for February"
+},
+"why": {
+"uk": "Вища за прогноз інфляція — ризик вищих ставок і тиск на акції та крипту.",
+"en": "Hotter than expected inflation raises rate risk and weighs on stocks and crypto."
+}
+},
+{
+"ts": "2027-04-13T08:30:00-04:00",
+"kind": "cpi",
+"imp": "High",
+"title": {
+"uk": "Інфляція США (CPI) за березень",
+"en": "US inflation (CPI) for March"
+},
+"why": {
+"uk": "Вища за прогноз інфляція — ризик вищих ставок і тиск на акції та крипту.",
+"en": "Hotter than expected inflation raises rate risk and weighs on stocks and crypto."
+}
+},
+{
+"ts": "2027-05-12T08:30:00-04:00",
+"kind": "cpi",
+"imp": "High",
+"title": {
+"uk": "Інфляція США (CPI) за квітень",
+"en": "US inflation (CPI) for April"
+},
+"why": {
+"uk": "Вища за прогноз інфляція — ризик вищих ставок і тиск на акції та крипту.",
+"en": "Hotter than expected inflation raises rate risk and weighs on stocks and crypto."
+}
+},
+{
+"ts": "2027-06-10T08:30:00-04:00",
+"kind": "cpi",
+"imp": "High",
+"title": {
+"uk": "Інфляція США (CPI) за травень",
+"en": "US inflation (CPI) for May"
+},
+"why": {
+"uk": "Вища за прогноз інфляція — ризик вищих ставок і тиск на акції та крипту.",
+"en": "Hotter than expected inflation raises rate risk and weighs on stocks and crypto."
+}
+},
+{
+"ts": "2026-12-04T08:30:00-05:00",
+"kind": "jobs",
+"imp": "High",
+"title": {
+"uk": "Звіт про робочі місця США (NFP) за листопад",
+"en": "US jobs report (NFP) for November"
+},
+"why": {
+"uk": "Показує силу економіки; сильний звіт може відсунути зниження ставок.",
+"en": "Shows economic strength; a strong report can delay rate cuts."
+}
+},
+{
+"ts": "2027-01-08T08:30:00-05:00",
+"kind": "jobs",
+"imp": "High",
+"title": {
+"uk": "Звіт про робочі місця США (NFP) за грудень",
+"en": "US jobs report (NFP) for December"
+},
+"why": {
+"uk": "Показує силу економіки; сильний звіт може відсунути зниження ставок.",
+"en": "Shows economic strength; a strong report can delay rate cuts."
+}
+},
+{
+"ts": "2027-02-05T08:30:00-05:00",
+"kind": "jobs",
+"imp": "High",
+"title": {
+"uk": "Звіт про робочі місця США (NFP) за січень",
+"en": "US jobs report (NFP) for January"
+},
+"why": {
+"uk": "Показує силу економіки; сильний звіт може відсунути зниження ставок.",
+"en": "Shows economic strength; a strong report can delay rate cuts."
+}
+},
+{
+"ts": "2027-03-05T08:30:00-05:00",
+"kind": "jobs",
+"imp": "High",
+"title": {
+"uk": "Звіт про робочі місця США (NFP) за лютий",
+"en": "US jobs report (NFP) for February"
+},
+"why": {
+"uk": "Показує силу економіки; сильний звіт може відсунути зниження ставок.",
+"en": "Shows economic strength; a strong report can delay rate cuts."
+}
+},
+{
+"ts": "2027-04-02T08:30:00-04:00",
+"kind": "jobs",
+"imp": "High",
+"title": {
+"uk": "Звіт про робочі місця США (NFP) за березень",
+"en": "US jobs report (NFP) for March"
+},
+"why": {
+"uk": "Показує силу економіки; сильний звіт може відсунути зниження ставок.",
+"en": "Shows economic strength; a strong report can delay rate cuts."
+}
+},
+{
+"ts": "2027-05-07T08:30:00-04:00",
+"kind": "jobs",
+"imp": "High",
+"title": {
+"uk": "Звіт про робочі місця США (NFP) за квітень",
+"en": "US jobs report (NFP) for April"
+},
+"why": {
+"uk": "Показує силу економіки; сильний звіт може відсунути зниження ставок.",
+"en": "Shows economic strength; a strong report can delay rate cuts."
+}
+},
+{
+"ts": "2027-06-04T08:30:00-04:00",
+"kind": "jobs",
+"imp": "High",
+"title": {
+"uk": "Звіт про робочі місця США (NFP) за травень",
+"en": "US jobs report (NFP) for May"
+},
+"why": {
+"uk": "Показує силу економіки; сильний звіт може відсунути зниження ставок.",
+"en": "Shows economic strength; a strong report can delay rate cuts."
+}
+},
+{
+"ts": "2026-12-17T14:15:00+01:00",
+"kind": "ecb",
+"imp": "Medium",
+"title": {
+"uk": "Рішення ЄЦБ щодо ставки",
+"en": "ECB rate decision"
+},
+"why": {
+"uk": "Впливає на євро, європейські акції та долар.",
+"en": "Moves the euro, European stocks and the dollar."
+}
+},
+{
+"ts": "2027-02-04T14:15:00+01:00",
+"kind": "ecb",
+"imp": "Medium",
+"title": {
+"uk": "Рішення ЄЦБ щодо ставки",
+"en": "ECB rate decision"
+},
+"why": {
+"uk": "Впливає на євро, європейські акції та долар.",
+"en": "Moves the euro, European stocks and the dollar."
+}
+},
+{
+"ts": "2027-03-18T14:15:00+01:00",
+"kind": "ecb",
+"imp": "Medium",
+"title": {
+"uk": "Рішення ЄЦБ щодо ставки",
+"en": "ECB rate decision"
+},
+"why": {
+"uk": "Впливає на євро, європейські акції та долар.",
+"en": "Moves the euro, European stocks and the dollar."
+}
+},
+{
+"ts": "2027-04-29T14:15:00+02:00",
+"kind": "ecb",
+"imp": "Medium",
+"title": {
+"uk": "Рішення ЄЦБ щодо ставки",
+"en": "ECB rate decision"
+},
+"why": {
+"uk": "Впливає на євро, європейські акції та долар.",
+"en": "Moves the euro, European stocks and the dollar."
+}
+},
+{
+"ts": "2027-06-10T14:15:00+02:00",
+"kind": "ecb",
+"imp": "Medium",
+"title": {
+"uk": "Рішення ЄЦБ щодо ставки",
+"en": "ECB rate decision"
+},
+"why": {
+"uk": "Впливає на євро, європейські акції та долар.",
+"en": "Moves the euro, European stocks and the dollar."
+}
+},
+{
+"ts": "2026-12-25T12:00:00Z",
+"kind": "holiday",
+"imp": "Low",
+"title": {
+"uk": "Різдво — біржі США закриті",
+"en": "Christmas — US markets closed"
+},
+"why": {
+"uk": "Низька ліквідність: у крипті можливі різкі рухи.",
+"en": "Thin liquidity: crypto can move sharply."
+}
+},
+{
+"ts": "2027-01-01T12:00:00Z",
+"kind": "holiday",
+"imp": "Low",
+"title": {
+"uk": "Новий рік — біржі США закриті",
+"en": "New Year — US markets closed"
+},
+"why": {
+"uk": "Низька ліквідність: у крипті можливі різкі рухи.",
+"en": "Thin liquidity: crypto can move sharply."
+}
+},
+{
+"ts": "2027-01-18T12:00:00Z",
+"kind": "holiday",
+"imp": "Low",
+"title": {
+"uk": "День Мартіна Лютера Кінга — біржі США закриті",
+"en": "MLK Day — US markets closed"
+},
+"why": {
+"uk": "Низька ліквідність: у крипті можливі різкі рухи.",
+"en": "Thin liquidity: crypto can move sharply."
+}
+},
+{
+"ts": "2027-02-15T12:00:00Z",
+"kind": "holiday",
+"imp": "Low",
+"title": {
+"uk": "День президентів — біржі США закриті",
+"en": "Presidents Day — US markets closed"
+},
+"why": {
+"uk": "Низька ліквідність: у крипті можливі різкі рухи.",
+"en": "Thin liquidity: crypto can move sharply."
+}
+},
+{
+"ts": "2027-03-26T12:00:00Z",
+"kind": "holiday",
+"imp": "Low",
+"title": {
+"uk": "Страсна п'ятниця — біржі США закриті",
+"en": "Good Friday — US markets closed"
+},
+"why": {
+"uk": "Низька ліквідність: у крипті можливі різкі рухи.",
+"en": "Thin liquidity: crypto can move sharply."
+}
+},
+{
+"ts": "2027-05-31T12:00:00Z",
+"kind": "holiday",
+"imp": "Low",
+"title": {
+"uk": "День пам'яті — біржі США закриті",
+"en": "Memorial Day — US markets closed"
+},
+"why": {
+"uk": "Низька ліквідність: у крипті можливі різкі рухи.",
+"en": "Thin liquidity: crypto can move sharply."
+}
+}
+]
+}
