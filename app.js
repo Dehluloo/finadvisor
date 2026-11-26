@@ -1,12 +1,12 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.3.0';
+const VERSION = '3.4.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
 const LIVE = 'https://raw.githubusercontent.com/Dehluloo/finadvisor/live/';
-const T_TICK = 20e3, T_LIVE = 60e3, T_BRIEF = 30 * 60e3, T_FULL = 4 * 3600e3, T_CHART = 60e3, T_MK = 5 * 60e3, T_LIQ = 5 * 60e3;
+const T_TICK = 15e3, T_LIVE = 60e3, T_BRIEF = 30 * 60e3, T_FULL = 4 * 3600e3, T_CHART = 60e3, T_MK = 5 * 60e3, T_LIQ = 5 * 60e3;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const store = {
@@ -382,13 +382,62 @@ function renderWatch() {
   for (const a of watchAssets()) { const k = state.tickers[a.id]; if (!k) continue; const p = prevPx[a.id]; if (p && p !== k.last) { const el = $(`[data-px="${a.id}"]`); if (el) el.classList.add(k.last > p ? 'flash-up' : 'flash-dn'); } prevPx[a.id] = k.last; }
   renderTape();
 }
-function setWatch(w) { WATCH = w; store.set('watch', WATCH); fillSelects(); renderWatch(); }
+function setWatch(w) { WATCH = w; store.set('watch', WATCH); fillSelects(); renderWatch(); wsSync(); }
 function renderPicker() {
   const q = $('#picker-q').value.trim().toUpperCase();
   const list = state.allInst.filter(id => !WATCH.includes(id) && (!q || id.includes(q) || (cgNames[assetFor(id).tk] || '').toUpperCase().includes(q))).slice(0, 40);
   $('#picker-list').innerHTML = list.map(id => { const a = assetFor(id), k = state.allTick && state.allTick[id]; return `<button data-add="${id}"><b>${esc(a.tk)}</b> <span class="muted">${esc(id.endsWith('PERP') ? 'PERP' : nameOf(a))}</span><span class="r ${cls(k && k.chg)}">${k ? money(k.last) + ' · ' + pct(k.chg) : ''}</span></button>`; }).join('') || '<div class="muted pad">—</div>';
 }
 
+function fillMissingPrices() {
+  const M = state.mk || [];
+  for (const id of WATCH) { if (state.tickers[id] && Date.now() - (state.tickers[id].t || 0) < 300e3 && !state.tickers[id].cg) continue; const sym = id.split('_')[0], c = M.find(x => x.symbol === sym);
+    if (c && (!state.allTick || !state.allTick[id])) state.tickers[id] = {last: c.current_price, high: c.current_price, low: c.current_price, chg: c.price_change_percentage_24h_in_currency || 0, t: Date.now(), cg: true}; }
+}
+// ---------- реальний час: WebSocket Crypto.com ----------
+let ws = null, wsSubs = new Set(), wsDirty = false, wsTimer = 0, wsBack = 1000;
+function wsWanted() { return [...new Set([...WATCH, state.asset, state.cmp, ...pfGet().map(r => r.id), ...store.get('alerts', []).map(a => a.id)].filter(id => id && (!state.allInst.length || state.allInst.includes(id))))].slice(0, 100); }
+function wsSync() {
+  if (!ws || ws.readyState !== 1) return;
+  const want = new Set(wsWanted()), add = [...want].filter(x => !wsSubs.has(x)), del = [...wsSubs].filter(x => !want.has(x));
+  if (add.length) ws.send(JSON.stringify({id: Date.now(), method: 'subscribe', params: {channels: add.map(x => 'ticker.' + x)}, nonce: Date.now()}));
+  if (del.length) ws.send(JSON.stringify({id: Date.now() + 1, method: 'unsubscribe', params: {channels: del.map(x => 'ticker.' + x)}, nonce: Date.now()}));
+  wsSubs = want;
+}
+function wsConnect() {
+  if (!('WebSocket' in window) || (ws && ws.readyState <= 1)) return;
+  try { ws = new WebSocket('wss://stream.crypto.com/exchange/v1/market'); } catch { return; }
+  ws.onopen = () => { wsBack = 1000; wsSubs = new Set(); setTimeout(wsSync, 1100); };
+  ws.onmessage = (m) => {
+    let j; try { j = JSON.parse(m.data); } catch { return; }
+    if (j.method === 'public/heartbeat') { ws.send(JSON.stringify({id: j.id, method: 'public/respond-heartbeat'})); return; }
+    const r = j.result; if (!r || r.channel !== 'ticker' || !r.data) return;
+    for (const d of r.data) { const id = d.i || r.instrument_name; if (!id || !+d.a) continue; state.tickers[id] = {last: +d.a, high: +d.h, low: +d.l, chg: +d.c * 100, t: +d.t || Date.now()}; if (state.allTick) state.allTick[id] = state.tickers[id]; }
+    state.tickAt = Date.now(); wsDirty = true;
+  };
+  ws.onclose = () => { ws = null; setTimeout(wsConnect, wsBack); wsBack = Math.min(wsBack * 2, 30000); };
+  ws.onerror = () => { try { ws.close(); } catch {} };
+}
+function liveCandle() {
+  if (!lastChart || lastChart.id !== state.asset || !TF[state.tf].intra || !lastChart.rows.length) return false;
+  const k = state.tickers[state.asset]; if (!k) return false;
+  const rows = lastChart.rows, last = rows.at(-1), per = {'5m': 3e5, '15m': 9e5, '1h': 36e5, '4h': 144e5}[state.tf], now = Date.now();
+  if (now >= last.t + per) rows.push({t: last.t + per * Math.floor((now - last.t) / per), o: last.c, h: Math.max(last.c, k.last), l: Math.min(last.c, k.last), c: k.last, v: 0});
+  else { last.c = k.last; last.h = Math.max(last.h, k.last); last.l = Math.min(last.l, k.last); }
+  return true;
+}
+function updatePrices() {
+  for (const a of watchAssets()) { const k = state.tickers[a.id]; if (!k) continue; const px = $(`[data-px="${CSS.escape(a.id)}"]`); if (!px) continue;
+    const txt = money(k.last); if (px.textContent !== txt) { const p = prevPx[a.id]; px.textContent = txt; px.classList.remove('flash-up', 'flash-dn'); void px.offsetWidth; if (p) px.classList.add(k.last >= p ? 'flash-up' : 'flash-dn'); prevPx[a.id] = k.last; }
+    const ch = px.parentElement.querySelector('.chg'); if (ch) { ch.textContent = pct(k.chg); ch.className = 'chg ' + cls(k.chg); } }
+  renderTape(); renderChartHead(); renderPortfolio(); checkPriceAlerts(); setStatus();
+}
+let chartDrawAt = 0;
+setInterval(() => {
+  if (!wsDirty || document.visibilityState !== 'visible') return; wsDirty = false;
+  updatePrices();
+  if (Date.now() - chartDrawAt > 1500 && liveCandle()) { chartDrawAt = Date.now(); redrawChart(); }
+}, 1000);
 // ---------- графік: дані ----------
 function renderChartHead() {
   const a = assetFor(state.asset), k = state.tickers[state.asset] || (state.allTick && state.allTick[state.asset]);
@@ -471,7 +520,7 @@ async function loadMarkets() {
     if (gl.status === 'fulfilled' && gl.value.data) { state.global = gl.value.data; store.set('global', state.global); }
     if (tr.status === 'fulfilled' && tr.value.coins) { state.trend = tr.value.coins.slice(0, 7).map(c => ({symbol:c.item.symbol.toUpperCase(), name:c.item.name, image:c.item.small || c.item.thumb, chg: c.item.data && c.item.data.price_change_percentage_24h && c.item.data.price_change_percentage_24h.usd})); store.set('trend', state.trend); }
   } catch {}
-  renderMarkets(); loadBubbles(); renderPulse();
+  fillMissingPrices(); fillSelects(); renderMarkets(); renderWatch(); loadBubbles(); renderPulse();
 }
 const cdcFor = (sym) => state.allInst.includes(sym + '_USD') ? sym + '_USD' : null;
 function renderMarkets() {
@@ -487,16 +536,16 @@ function renderMarkets() {
   const s24 = M.filter(c => c.price_change_percentage_24h_in_currency != null && c.total_volume > 5e6);
   $('#mk-gain').innerHTML = s24.slice().sort((a, b) => b.price_change_percentage_24h_in_currency - a.price_change_percentage_24h_in_currency).slice(0, 7).map(coinLine).join('') || '<div class="muted">—</div>';
   $('#mk-lose').innerHTML = s24.slice().sort((a, b) => a.price_change_percentage_24h_in_currency - b.price_change_percentage_24h_in_currency).slice(0, 7).map(coinLine).join('') || '<div class="muted">—</div>';
-  const [k, dir] = state.mkSort, q = state.mkQ.toUpperCase(), fav = new Set(store.get('mkFav', []));
+  const [k, dir] = state.mkSort, q = state.mkQ.toUpperCase(), fav = new Set(M.filter(c => WATCH.includes(c.symbol + '_USD')).map(c => c.id));
   const sorted = M.filter(c => (!q || c.symbol.includes(q) || c.name.toUpperCase().includes(q)) && (!state.mkFavOnly || fav.has(c.id))).sort((a, b) => { const x = a[k], y = b[k]; if (typeof x === 'string') return x.localeCompare(y) * dir; return ((x ?? -Infinity) - (y ?? -Infinity)) * dir; });
   const rows = [...sorted.filter(c => fav.has(c.id)), ...sorted.filter(c => !fav.has(c.id))];
   const shown = Math.max(state.mkN, rows.filter(c => fav.has(c.id)).length);
   $('#mk-rows').innerHTML = rows.slice(0, shown).map(c => {
     const cid = cdcFor(c.symbol), inW = cid && WATCH.includes(cid), up7 = (c.price_change_percentage_7d_in_currency || 0) >= 0, isF = fav.has(c.id);
-    return `<tr data-sym="${esc(c.symbol)}"${isF ? ' class="fav"' : ''}><td class="muted"><button class="star${isF ? ' on' : ''}" data-fav="${esc(c.id)}" title="${t('favTip')}">${isF ? '★' : '☆'}</button>${c.market_cap_rank || ''}</td><td><div class="coin"><img src="${esc(c.image)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(c.symbol)}</b><span class="muted nm hide-s">${esc(c.name)}</span></div></td>
+    return `<tr data-sym="${esc(c.symbol)}"${isF ? ' class="fav"' : ''}><td class="muted"><button class="star${isF ? ' on' : ''}" data-fav="${esc(c.symbol)}" title="${t('favTip')}">${isF ? '★' : '☆'}</button>${c.market_cap_rank || ''}</td><td><div class="coin"><img src="${esc(c.image)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(c.symbol)}</b><span class="muted nm hide-s">${esc(c.name)}</span></div></td>
       <td class="r">${money(c.current_price)}</td><td class="r ${cls(c.price_change_percentage_1h_in_currency)}">${pct(c.price_change_percentage_1h_in_currency, 1)}</td><td class="r ${cls(c.price_change_percentage_24h_in_currency)}">${pct(c.price_change_percentage_24h_in_currency, 1)}</td><td class="r ${cls(c.price_change_percentage_7d_in_currency)}">${pct(c.price_change_percentage_7d_in_currency, 1)}</td>
       <td class="r hide-s">${moneyBig(c.market_cap)}</td><td class="r hide-s">${moneyBig(c.total_volume)}</td><td class="hide-s spark7">${sparkSVG(c.spark, up7 ? 'var(--up)' : 'var(--dn)', 28)}</td>
-      <td>${cid ? `<button class="addw${inW ? ' on' : ''}" data-star="${cid}" title="${inW ? t('inWatch') : t('addWatch')}">${inW ? '✓' : '+'}</button>` : ''}</td></tr>`;
+      </tr>`;
   }).join('');
   if (!rows.length && state.mkFavOnly) $('#mk-rows').innerHTML = `<tr><td colspan="10" class="muted pad">${t('favEmpty')}</td></tr>`;
   $('#mk-more').hidden = rows.length <= shown; $('#mk-less').hidden = state.mkN <= 10 || state.mkFavOnly;
@@ -931,6 +980,7 @@ async function tick() {
   let ok = false;
   try { Object.assign(state.tickers, await fetchTickers()); ok = true; }
   catch { const fb = await fetchTickersFallback(); if (Object.keys(fb).length) { Object.assign(state.tickers, fb); ok = true; } }
+  fillMissingPrices();
   if (ok) { pushPriceBuf(); state.tickAt = Date.now(); store.set('tickers', state.tickers); store.set('tickAt', state.tickAt); renderWatch(); renderPortfolio(); renderChartHead(); checkPriceAlerts(); renderSince(); }
   setStatus();
 }
@@ -964,9 +1014,14 @@ function fillSelects() {
   const list = watchAssets(); if (!WATCH.includes(state.asset)) list.unshift(assetFor(state.asset));
   const html = opts(list), all = [...list, ...BASE_ASSETS.filter(a => !list.includes(a))];
   for (const s of ['#pf-asset', '#al-asset']) { const el = $(s), v = el.value; el.innerHTML = opts(all); if (v) el.value = v; }
-  for (const s of ['#asset-select']) { const el = $(s), v = el.value; el.innerHTML = html; if (v) el.value = v; }
+  const grp = store.get('assetGrp', 'fav'); $$('#asset-grp button').forEach(b => b.classList.toggle('on', b.dataset.v === grp));
+  const topCrypto = (state.mk || []).filter(c => !STABLE.has(c.symbol)).slice(0, 60).map(c => assetFor(c.symbol + '_USD'));
+  let pool = grp === 'fav' ? watchAssets() : grp === 'c' ? [...new Map([...BASE_ASSETS.filter(a => a.g === 'c'), ...watchAssets().filter(a => a.g === 'c'), ...topCrypto].map(a => [a.id, a])).values()] : [...new Map([...BASE_ASSETS.filter(a => a.g !== 'c'), ...watchAssets().filter(a => a.g !== 'c')].map(a => [a.id, a])).values()];
+  if (!pool.length) pool = BASE_ASSETS.slice(0, 5);
+  if (!pool.some(a => a.id === state.asset)) pool = [assetFor(state.asset), ...pool];
+  $('#asset-select').innerHTML = grp === 'fav' ? `<optgroup label="★ ${esc(t('grpFav'))}">` + pool.map(a => `<option value="${a.id}">${esc(fullName(a))}</option>`).join('') + '</optgroup>' : opts(pool);
   $('#asset-select').value = state.asset;
-  $('#cmp-select').innerHTML = `<option value="">${t('none')}</option>` + opts(list.filter(a => a.id !== state.asset)); $('#cmp-select').value = state.cmp;
+  $('#cmp-select').innerHTML = `<option value="">${t('none')}</option>` + opts(all.filter(a => a.id !== state.asset)); $('#cmp-select').value = state.cmp;
   const coins = [...new Set(['BTC', 'ETH', 'SOL', 'HYPE', 'XRP', 'DOGE', ...watchAssets().filter(a => a.g === 'c').map(a => a.tk)])];
   $('#liq-coin').innerHTML = coins.map(c => `<option>${c}</option>`).join(''); $('#liq-coin').value = state.liqCoin;
 }
@@ -994,7 +1049,7 @@ const seg = (sel, fn) => $(sel).addEventListener('click', e => { const b = e.tar
 function init() {
   if (!WATCH.length) WATCH = BASE_ASSETS.map(a => a.id);
   if (!TF[state.tf]) state.tf = '1h';
-  const pick = (id) => { state.asset = id; store.set('asset', id); if (state.cmp === id) state.cmp = ''; fillSelects(); renderWatch(); loadChart(); };
+  const pick = (id) => { state.asset = id; store.set('asset', id); if (state.cmp === id) state.cmp = ''; fillSelects(); renderWatch(); loadChart(); wsSync(); };
   $('#asset-select').addEventListener('change', e => pick(e.target.value));
   $('#cmp-select').addEventListener('change', e => { state.cmp = e.target.value; loadChart(); });
   $('#log-tog').addEventListener('change', e => { state.log = e.target.checked; store.set('log', state.log); redrawChart(); });
@@ -1010,6 +1065,7 @@ function init() {
   $('#watch-add').addEventListener('click', () => { const p = $('#picker'); p.hidden = !p.hidden; if (!p.hidden) { renderPicker(); $('#picker-q').focus(); } });
   $('#picker-q').addEventListener('input', renderPicker);
   $('#picker-list').addEventListener('click', e => { const b = e.target.closest('[data-add]'); if (!b) return; setWatch([...WATCH, b.dataset.add]); renderPicker(); tick(); loadSparks(); });
+  seg('#asset-grp', b => { store.set('assetGrp', b.dataset.v); fillSelects(); });
   seg('#tf-seg', b => { state.tf = b.dataset.tf; store.set('tf', state.tf); loadChart(); });
   seg('#news-seg', b => { state.newsF = b.dataset.f; renderNews(); });
   seg('#live-cat', b => { state.liveCat = b.dataset.c; state.feedN = 12; renderFeed(); });
@@ -1021,7 +1077,7 @@ function init() {
   $('#mk-less').addEventListener('click', () => { state.mkN = 10; renderMarkets(); $('#sec-markets').scrollIntoView({behavior:'smooth', block:'start'}); });
   $('#mk-favonly').addEventListener('click', () => { state.mkFavOnly = !state.mkFavOnly; renderMarkets(); });
   $('#mk-table thead').addEventListener('click', e => { const th = e.target.closest('th[data-k]'); if (!th) return; const k = th.dataset.k; state.mkSort = [k, state.mkSort[0] === k ? -state.mkSort[1] : (k === 'market_cap_rank' || k === 'name' ? 1 : -1)]; renderMarkets(); });
-  $('#mk-rows').addEventListener('click', e => { const f = e.target.closest('[data-fav]'); if (f) { e.stopPropagation(); const id = f.dataset.fav, fv = store.get('mkFav', []); store.set('mkFav', fv.includes(id) ? fv.filter(x => x !== id) : [...fv, id]); renderMarkets(); return; } const s = e.target.closest('[data-star]'); if (s) { e.stopPropagation(); const id = s.dataset.star; setWatch(WATCH.includes(id) ? WATCH.filter(x => x !== id) : [...WATCH, id]); renderMarkets(); tick(); return; } const tr = e.target.closest('tr[data-sym]'); if (tr) openSym(tr.dataset.sym); });
+  $('#mk-rows').addEventListener('click', e => { const f = e.target.closest('[data-fav]'); if (f) { e.stopPropagation(); const id = f.dataset.fav + '_USD'; setWatch(WATCH.includes(id) ? WATCH.filter(x => x !== id) : [...WATCH, id]); renderMarkets(); fillMissingPrices(); renderWatch(); wsSync(); return; } const tr = e.target.closest('tr[data-sym]'); if (tr) openSym(tr.dataset.sym); });
   $$('#mk-trend,#mk-gain,#mk-lose').forEach(el => el.addEventListener('click', e => { const r = e.target.closest('[data-sym]'); if (r) openSym(r.dataset.sym); }));
   seg('#bb-per', b => { state.bbPer = b.dataset.v; store.set('bbPer', state.bbPer); state.bbItems = null; loadBubbles(); });
   seg('#bb-size', b => { state.bbSize = b.dataset.v; drawBubbles(); });
@@ -1077,7 +1133,7 @@ function init() {
   initCollapse(); renderAll(); updateBadge();
   let rz, lw = innerWidth; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (Math.abs(innerWidth - lw) < 20) return; lw = innerWidth; redrawChart(); renderBubbles(); loadLiq(); renderWatch(); balanceAll(); }, 200); });
 
-  refreshAll().then(() => loadLive(true));
+  refreshAll().then(() => { loadLive(true); wsConnect(); });
   setInterval(tick, T_TICK);
   setInterval(() => { if (document.visibilityState === 'visible' && TF[state.tf].intra) loadChart(true); }, T_CHART);
   setInterval(() => loadLive(), T_LIVE);

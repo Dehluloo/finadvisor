@@ -210,3 +210,5 @@ Object.assign(I18N.en, {updating:'Installing the new version…', favEmpty:'No f
   srcTokenHelp:'Your source list is stored in your GitHub repository, so the app needs an access key. On GitHub: Fine-grained token → Repository access: Only select → finadvisor → Permissions: Contents — Read and write → Generate. Paste the key here. It is stored only on this device.',
   srcTokenLink:'Create a key on GitHub ↗', srcSaved:'Saved ✓ New sources will appear in the feed within a few minutes.', srcErr:'Could not save: ', srcNeedToken:'To save changes, add a GitHub key below.',
   srcDef:'default', srcCustom:'yours', srcBad:'This does not look like a channel or website.', srcOk:'working', srcFail:'not responding', tokenSaved:'Key saved on this device.'});
+Object.assign(I18N.uk, {grpFav:'Мій список', grpCrypto:'Крипто', grpStocks:'Фонди й акції', favTip:'Додати в «Мій список» і графік (★) / прибрати'});
+Object.assign(I18N.en, {grpFav:'My list', grpCrypto:'Crypto', grpStocks:'Funds & stocks', favTip:'Add to “My list” and chart (★) / remove'});
