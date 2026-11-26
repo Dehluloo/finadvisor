@@ -24,24 +24,16 @@
     </div>
   </div>
   <div class="actions">
-    <button class="icon-btn" id="bell" aria-label="Сповіщення" data-i18n-aria="notifications">
-      <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3a1.5 1.5 0 0 0-3 0v1.16A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg>
-      <span class="badge" id="badge" hidden>0</span>
-    </button>
-    <button class="icon-btn" id="settings-btn" aria-label="Налаштування" data-i18n-aria="settings">
-      <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94a7.4 7.4 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.4 7.4 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.05.7 1.63.94l.36 2.54c.04.24.25.42.49.42h3.84c.24 0 .45-.18.49-.42l.36-2.54a7 7 0 0 0 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
-    </button>
-    <button class="btn primary" id="refresh">
-      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-      <span data-i18n="refresh">Оновити</span>
-    </button>
+    <button class="icon-btn" id="bell" data-i18n-aria="notifications"><svg viewBox="0 0 24 24" width="19" height="19"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3a1.5 1.5 0 0 0-3 0v1.16A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg><span class="badge" id="badge" hidden>0</span></button>
+    <button class="icon-btn" id="settings-btn" data-i18n-aria="settings"><svg viewBox="0 0 24 24" width="19" height="19"><path fill="currentColor" d="M19.14 12.94a7.4 7.4 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54a7 7 0 0 0-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.4 7.4 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.05.7 1.63.94l.36 2.54c.04.24.25.42.49.42h3.84c.24 0 .45-.18.49-.42l.36-2.54a7 7 0 0 0 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
+    <button class="btn primary" id="refresh"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg><span data-i18n="refresh">Оновити</span></button>
   </div>
 </header>
+<div class="tape" id="tape" hidden><div class="tape-in" id="tape-in"></div></div>
 
-<div class="tape" id="tape" aria-hidden="true"><div class="tape-in" id="tape-in"></div></div>
+<main class="wrap" id="main">
 
-<main class="wrap">
-  <section class="card hero" id="hero">
+  <section class="card hero" id="sec-pulse" data-sec="pulse">
     <div class="hero-light"></div>
     <div class="hero-body">
       <div class="eyebrow" id="hero-date"></div>
@@ -49,126 +41,149 @@
       <p id="hero-summary" class="lead"></p>
       <div class="chips" id="hero-chips"></div>
     </div>
+    <div class="pulse" id="pulse" title=""></div>
   </section>
 
-  <section class="card" id="sec-chart" data-collapse>
+  <section class="card since" id="sec-since" data-sec="since" hidden>
+    <div class="head"><h2 class="noc"><span data-i18n="since">Поки вас не було</span> <span class="muted small" id="since-t"></span></h2><button class="icon-btn sm" id="since-x">✕</button></div>
+    <div class="since-row" id="since-row"></div>
+  </section>
+
+  <section class="card" id="sec-chart" data-sec="chart" data-collapse>
     <div class="head">
       <h2><span data-i18n="chart">Графік</span>: <span id="chart-name">—</span></h2>
-      <div class="price-line">
-        <span class="big" id="chart-price"></span>
-        <span class="pill" id="chart-chg" hidden></span>
-        <span class="muted small" id="chart-hl"></span>
-      </div>
+      <div class="price-line"><span class="big" id="chart-price"></span><span class="pill" id="chart-chg" hidden></span><span class="muted small" id="chart-hl"></span></div>
     </div>
     <div class="toolbar">
-      <select id="asset-select" aria-label="Asset"></select>
-      <div class="seg" id="tf-seg" role="group">
+      <select id="asset-select"></select>
+      <div class="seg" id="tf-seg">
         <button data-tf="5m">5m</button><button data-tf="15m">15m</button><button data-tf="1h">1h</button><button data-tf="4h">4h</button>
         <button data-tf="1M">1M</button><button data-tf="2M">2M</button><button data-tf="3M">3M</button><button data-tf="6M">6M</button>
       </div>
-      <label class="tog"><input type="checkbox" id="ma-tog"> <span data-i18n="ma">Середні MA20/50</span></label>
+    </div>
+    <div class="toolbar">
+      <details class="dd"><summary data-i18n="indicators">Індикатори</summary><div class="dd-b" id="ind-box"></div></details>
+      <label class="tog"><input type="checkbox" id="log-tog"> <span data-i18n="logScale">Лог. шкала</span></label>
+      <label class="tog"><span data-i18n="compare">Порівняти з</span> <select id="cmp-select"></select></label>
     </div>
     <div class="chart" id="chart"></div>
     <div class="legend muted small" id="chart-legend"></div>
     <div class="muted small" id="chart-note"></div>
   </section>
 
-  <section class="card" id="sec-watch" data-collapse>
-    <div class="head"><h2 data-i18n="market">Ринок зараз</h2><span class="muted small" data-i18n="tapAsset">Натисніть на актив, щоб відкрити графік</span></div>
-    <h3 class="group" data-i18n="crypto">Криптовалюти</h3>
-    <div class="grid" id="watch-crypto"></div>
-    <h3 class="group" data-i18n="stocks">Фондовий ринок і золото</h3>
-    <div class="grid" id="watch-stocks"></div>
+  <section class="card" id="sec-watch" data-sec="watch" data-collapse>
+    <div class="head"><h2 data-i18n="market">Мій список</h2>
+      <div class="row-g"><button class="btn small" id="watch-add">+ <span data-i18n="addAsset">Додати актив</span></button><button class="btn small ghost" id="watch-edit" data-i18n="edit">Редагувати</button></div>
+    </div>
+    <div class="picker" id="picker" hidden><input id="picker-q" data-i18n-ph="searchAsset" autocomplete="off"><div class="picker-list" id="picker-list"></div></div>
+    <div id="watch-grid"></div>
   </section>
 
-  <section class="card" id="sec-live" data-collapse>
-    <div class="head"><h2><span data-i18n="liveNews">Новини наживо</span> <span class="count" id="live-count"></span></h2>
-      <span class="muted small" id="live-upd"></span>
+  <section class="card" id="sec-markets" data-sec="markets" data-collapse>
+    <div class="head"><h2 data-i18n="markets">Ринок криптовалют</h2><input class="mini" id="mk-q" data-i18n-ph="search" placeholder="Пошук"></div>
+    <div class="stats" id="mk-stats"></div>
+    <div class="three">
+      <div class="mini-card"><div class="mc-h">🔥 <span data-i18n="trending">У тренді</span></div><div id="mk-trend"></div></div>
+      <div class="mini-card"><div class="mc-h">🚀 <span data-i18n="gainers">Лідери росту</span></div><div id="mk-gain"></div></div>
+      <div class="mini-card"><div class="mc-h">🔻 <span data-i18n="losers">Лідери падіння</span></div><div id="mk-lose"></div></div>
     </div>
+    <div class="tbl-wrap"><table class="tbl mk" id="mk-table"><thead><tr>
+      <th data-k="market_cap_rank" data-i18n="rank">#</th><th data-k="name" data-i18n="coin">Монета</th><th data-k="current_price" class="r" data-i18n="price">Ціна</th>
+      <th data-k="price_change_percentage_1h_in_currency" class="r" data-i18n="h1">1г</th><th data-k="price_change_percentage_24h_in_currency" class="r" data-i18n="h24">24г</th><th data-k="price_change_percentage_7d_in_currency" class="r" data-i18n="d7">7д</th>
+      <th data-k="market_cap" class="r hide-s" data-i18n="mcap">Капіталізація</th><th data-k="total_volume" class="r hide-s" data-i18n="volume">Обсяг</th><th class="hide-s" data-i18n="last7">7 днів</th><th></th></tr></thead><tbody id="mk-rows"></tbody></table></div>
+    <button class="btn ghost more" id="mk-more" data-i18n="more">Показати ще</button>
+  </section>
+
+  <section class="card" id="sec-bubbles" data-sec="bubbles" data-collapse>
+    <div class="head"><h2 data-i18n="bubbles">Бульбашки ринку</h2>
+      <div class="row-g">
+        <div class="seg small" id="bb-per"><button data-v="1h">1h</button><button data-v="24h" class="on">24h</button><button data-v="7d">7d</button></div>
+        <div class="seg small" id="bb-size"><button data-v="chg" class="on" data-i18n="bySize_chg">за зміною</button><button data-v="mcap" data-i18n="bySize_mcap">за капіталізацією</button></div>
+      </div>
+    </div>
+    <div class="bubbles" id="bubbles"></div>
+  </section>
+
+  <section class="card" id="sec-live" data-sec="live" data-collapse>
+    <div class="head"><h2><span data-i18n="liveNews">Новини наживо</span> <span class="count" id="live-count"></span></h2><span class="muted small" id="live-upd"></span></div>
     <div class="filters">
-      <div class="seg small" id="live-cat">
-        <button data-c="all" class="on" data-i18n="all">Усі</button><button data-c="imp" data-i18n="important">Важливі</button><button data-c="crypto" data-i18n="cat_crypto">Крипто</button><button data-c="economy" data-i18n="cat_economy">Економіка</button><button data-c="politics" data-i18n="cat_politics">Політика</button><button data-c="geo" data-i18n="cat_geo">Геополітика</button><button data-c="telegram">Telegram</button>
-      </div>
-      <div class="seg small" id="live-sent">
-        <button data-s="all" class="on" data-i18n="any">Будь-які</button><button data-s="Bullish" data-i18n="bull">Бичачі</button><button data-s="Bearish" data-i18n="bear">Ведмежі</button>
-      </div>
+      <div class="seg small" id="live-cat"><button data-c="all" class="on" data-i18n="all">Усі</button><button data-c="imp" data-i18n="important">Важливі</button><button data-c="crypto" data-i18n="cat_crypto">Крипто</button><button data-c="economy" data-i18n="cat_economy">Економіка</button><button data-c="politics" data-i18n="cat_politics">Політика</button><button data-c="geo" data-i18n="cat_geo">Геополітика</button><button data-c="telegram">Telegram</button></div>
+      <div class="seg small" id="live-sent"><button data-s="all" class="on" data-i18n="any">Будь-які</button><button data-s="Bullish" data-i18n="bull">Бичачі</button><button data-s="Bearish" data-i18n="bear">Ведмежі</button></div>
     </div>
     <div class="feed" id="feed"></div>
     <button class="btn ghost more" id="feed-more" data-i18n="more">Показати ще</button>
-    <p class="muted small" data-i18n="autoTagNote">Теги «бичача/ведмежа» тут ставляться автоматично за ключовими словами, без ШІ — це лише підказка.</p>
+    <p class="muted small" data-i18n="autoTagNote"></p>
   </section>
 
-  <div class="two">
-    <section class="card" id="sec-fng" data-collapse>
-      <div class="head"><h2 data-i18n="fng">Індекс страху й жадібності</h2></div>
-      <div class="fng">
-        <svg viewBox="0 0 200 120" class="gauge" id="fng-gauge"></svg>
-        <div><div class="big" id="fng-val">—</div><div id="fng-label">—</div><div class="muted small" id="fng-prev"></div></div>
-      </div>
-      <div class="spark-wide" id="fng-hist"></div>
-      <p class="muted small" data-i18n="fngNote">0 — паніка, 100 — ейфорія. Сильний страх часто буває біля дна, але не гарантує розвороту.</p>
-    </section>
-    <section class="card" id="sec-auto" data-collapse>
-      <div class="head"><h2 data-i18n="auto">Авто-сигнал (за правилами)</h2></div>
-      <div class="auto" id="auto"></div>
-      <p class="muted small" data-i18n="autoNote">Рахується застосунком самостійно з ціни Bitcoin і індексу страху. Це орієнтир, а не порада купувати чи продавати.</p>
-    </section>
-  </div>
+  <section class="card half" id="sec-fng" data-sec="fng" data-collapse>
+    <div class="head"><h2 data-i18n="fng">Індекс страху й жадібності</h2></div>
+    <div class="fng"><svg viewBox="0 0 200 120" class="gauge" id="fng-gauge"></svg><div><div class="big" id="fng-val">—</div><div id="fng-label">—</div><div class="muted small" id="fng-prev"></div></div></div>
+    <div class="spark-wide" id="fng-hist"></div>
+    <p class="muted small" data-i18n="fngNote"></p>
+  </section>
+  <section class="card half" id="sec-auto" data-sec="auto" data-collapse>
+    <div class="head"><h2 data-i18n="auto">Авто-сигнал</h2></div>
+    <div class="auto" id="auto"></div>
+    <p class="muted small" data-i18n="autoNote"></p>
+  </section>
 
-  <section class="card" id="sec-perps" data-collapse>
-    <div class="head"><h2 data-i18n="perps">Ф'ючерси: фандинг і відкритий інтерес</h2><span class="muted small">Hyperliquid</span></div>
+  <section class="card" id="sec-liq" data-sec="liq" data-collapse>
+    <div class="head"><h2 data-i18n="liqmap">Карта ліквідацій</h2><div class="row-g"><select id="liq-coin"></select><div class="seg small" id="liq-range"><button data-v="3">3d</button><button data-v="7" class="on">7d</button><button data-v="14">14d</button></div></div></div>
+    <div class="liq" id="liq"></div>
+    <p class="muted small" data-i18n="liqNote"></p>
+  </section>
+
+  <section class="card" id="sec-perps" data-sec="perps" data-collapse>
+    <div class="head"><h2 data-i18n="perps">Ф'ючерси</h2><span class="muted small">Hyperliquid</span></div>
     <div class="perps" id="perps"></div>
-    <p class="muted small" data-i18n="perpsNote">Фандинг — плата між покупцями й продавцями ф'ючерсів. Високий плюс означає, що багато хто ставить на ріст із плечем (ризик різкого падіння), мінус — навпаки.</p>
+    <p class="muted small" data-i18n="perpsNote"></p>
   </section>
 
-  <section class="card" id="sec-lights" data-collapse>
+  <section class="card" id="sec-lights" data-sec="lights" data-collapse>
     <div class="head"><h2 data-i18n="lights">Світлофор ризику</h2><span class="muted small" data-i18n="fromBrief">з ранкового брифу</span></div>
     <div class="lights" id="lights"></div>
   </section>
 
-  <section class="card" id="sec-plain" data-collapse>
+  <section class="card" id="sec-plain" data-sec="plain" data-collapse>
     <div class="head"><h2 data-i18n="plain">Простими словами</h2></div>
     <div class="plain" id="plain"></div>
   </section>
 
-  <section class="card" id="sec-news" data-collapse>
+  <section class="card" id="sec-news" data-sec="news" data-collapse>
     <div class="head"><h2 data-i18n="briefNews">Головне від аналітика</h2>
-      <div class="seg small" id="news-seg"><button data-f="all" class="on" data-i18n="all">Усі</button><button data-f="Bullish" data-i18n="bull">Бичачі</button><button data-f="Bearish" data-i18n="bear">Ведмежі</button></div>
-    </div>
+      <div class="seg small" id="news-seg"><button data-f="all" class="on" data-i18n="all">Усі</button><button data-f="Bullish" data-i18n="bull">Бичачі</button><button data-f="Bearish" data-i18n="bear">Ведмежі</button></div></div>
     <div class="news" id="news"></div>
   </section>
 
-  <div class="two">
-    <section class="card" id="sec-cal" data-collapse>
-      <div class="head"><h2 data-i18n="calendar">Календар подій</h2></div>
-      <h3 class="group" data-i18n="thisWeek">Цей тиждень (оновлюється наживо)</h3>
-      <div class="ecal" id="ecal"></div>
-      <h3 class="group" data-i18n="aheadBrief">Попереду (з брифу)</h3>
-      <ol class="timeline" id="calendar"></ol>
-    </section>
-    <section class="card" id="sec-outlook" data-collapse>
-      <div class="head"><h2 data-i18n="outlook">Прогноз за напрямками</h2></div>
-      <div id="outlook"></div>
-    </section>
-  </div>
+  <section class="card" id="sec-cal" data-sec="cal" data-collapse>
+    <div class="head"><h2 data-i18n="calendar">Що нас чекає</h2>
+      <div class="row-g">
+        <div class="seg small" id="cal-range"><button data-v="7" data-i18n="r1w">Тиждень</button><button data-v="31" class="on" data-i18n="r1m">Місяць</button><button data-v="92" data-i18n="r3m">3 місяці</button><button data-v="183" data-i18n="r6m">Пів року</button></div>
+        <div class="seg small" id="cal-view"><button data-v="list" data-i18n="list">Список</button><button data-v="grid" class="on" data-i18n="grid">Календар</button></div>
+        <label class="tog"><input type="checkbox" id="cal-high"> <span data-i18n="onlyHigh">Лише важливі</span></label>
+      </div>
+    </div>
+    <div id="cal"></div>
+  </section>
 
-  <section class="card" id="sec-weekly" data-collapse>
+  <section class="card" id="sec-outlook" data-sec="outlook" data-collapse>
+    <div class="head"><h2 data-i18n="outlook">Прогноз за напрямками</h2></div>
+    <div id="outlook" class="ol-grid"></div>
+  </section>
+
+  <section class="card" id="sec-weekly" data-sec="weekly" data-collapse>
     <div class="head"><h2><span data-i18n="weekly">Огляд тижня</span> <span class="muted" id="week"></span></h2></div>
     <div class="weekly" id="weekly"></div>
   </section>
 
-  <section class="card" id="sec-portfolio" data-collapse data-closed>
-    <div class="head"><h2 data-i18n="portfolio">Мій портфель</h2><span class="muted small" data-i18n="localOnly">зберігається лише на цьому пристрої</span></div>
-    <form class="pf-form" id="pf-form">
-      <select id="pf-asset"></select>
-      <input id="pf-amount" type="number" step="any" min="0" required data-i18n-ph="amount" placeholder="Кількість">
-      <button class="btn primary" type="submit" data-i18n="add">Додати</button>
-    </form>
-    <div class="pf-total"><div><div class="muted small" data-i18n="total">Разом</div><div class="big" id="pf-total">$0</div></div><div><div class="muted small" data-i18n="cryptoShare">Частка крипти</div><div class="big" id="pf-crypto">—</div></div></div>
+  <section class="card" id="sec-portfolio" data-sec="portfolio" data-collapse>
+    <div class="head"><h2 data-i18n="portfolio">Мій портфель</h2><span class="muted small" data-i18n="localOnly"></span></div>
+    <form class="pf-form" id="pf-form"><select id="pf-asset"></select><input id="pf-amount" type="number" step="any" min="0" required data-i18n-ph="amount"><button class="btn primary" type="submit" data-i18n="add">Додати</button></form>
+    <div class="pf-total"><div><div class="muted small" data-i18n="total">Разом</div><div class="big" id="pf-total">0</div></div><div><div class="muted small" data-i18n="cryptoShare">Частка крипти</div><div class="big" id="pf-crypto">—</div></div></div>
     <table class="tbl"><thead><tr><th data-i18n="asset">Актив</th><th data-i18n="qty">Кількість</th><th data-i18n="price">Ціна</th><th data-i18n="value">Вартість</th><th>24h</th><th></th></tr></thead><tbody id="pf-rows"></tbody></table>
   </section>
 
-  <section class="card" id="sec-tips" data-collapse>
+  <section class="card" id="sec-tips" data-sec="tips" data-collapse>
     <div class="head"><h2 data-i18n="tips">Як діють обережні інвестори</h2></div>
     <ul class="tips" id="tips"></ul>
   </section>
@@ -176,30 +191,36 @@
   <footer class="foot muted small"><span data-i18n="footer"></span> <span id="ver"></span></footer>
 </main>
 
-<!-- панель сповіщень -->
 <aside class="drawer" id="drawer" hidden>
-  <div class="drawer-h"><b data-i18n="notifications">Сповіщення</b><div><button class="btn ghost small" id="notif-clear" data-i18n="clear">Очистити</button><button class="icon-btn" data-close aria-label="Close">✕</button></div></div>
+  <div class="drawer-h"><b data-i18n="notifications">Сповіщення</b><div><button class="btn ghost small" id="notif-clear" data-i18n="clear">Очистити</button><button class="icon-btn" data-close>✕</button></div></div>
   <div class="notif-list" id="notif-list"></div>
 </aside>
 
-<!-- налаштування -->
 <aside class="drawer" id="settings" hidden>
-  <div class="drawer-h"><b data-i18n="settings">Налаштування</b><button class="icon-btn" data-close aria-label="Close">✕</button></div>
+  <div class="drawer-h"><b data-i18n="settings">Налаштування</b><button class="icon-btn" data-close>✕</button></div>
   <div class="set">
     <div class="set-row"><span data-i18n="language">Мова</span><div class="seg small" id="lang-seg"><button data-v="uk">Українська</button><button data-v="en">English</button></div></div>
+    <div class="set-row"><span data-i18n="currency">Валюта</span><div class="seg small" id="cur-seg"><button data-v="USD">$ USD</button><button data-v="EUR">€ EUR</button><button data-v="UAH">₴ UAH</button><button data-v="RON">lei RON</button></div></div>
     <div class="set-row"><span data-i18n="theme">Тема</span><div class="seg small" id="theme-seg"><button data-v="auto" data-i18n="auto_t">Авто</button><button data-v="dark" data-i18n="dark">Темна</button><button data-v="light" data-i18n="light">Світла</button></div></div>
+    <div class="set-row"><span data-i18n="accent">Колір акценту</span><div class="swatches" id="accent-sw"></div></div>
+    <div class="set-row"><span data-i18n="density">Щільність</span><div class="seg small" id="dens-seg"><button data-v="comfy" data-i18n="comfy">Звичайна</button><button data-v="compact" data-i18n="compact">Компактна</button></div></div>
+
+    <h3 class="group" data-i18n="layout">Що показувати на головній</h3>
+    <p class="muted small" data-i18n="layoutNote"></p>
+    <div class="layout-list" id="layout-list"></div>
+    <button class="btn small ghost" id="layout-reset" data-i18n="reset">Скинути</button>
+
+    <h3 class="group" data-i18n="notifications">Сповіщення</h3>
     <div class="set-row"><span data-i18n="notifyWhat">Сповіщати про новини</span><div class="seg small" id="nmode-seg"><button data-v="imp" data-i18n="important">Важливі</button><button data-v="all" data-i18n="all">Усі</button><button data-v="off" data-i18n="off">Вимк.</button></div></div>
-    <div class="set-row"><span data-i18n="sysNotif">Системні сповіщення macOS/iOS</span><button class="btn small" id="sys-notif"></button></div>
+    <div class="set-row"><span data-i18n="sysNotif">Системні сповіщення</span><button class="btn small" id="sys-notif"></button></div>
     <div class="set-row"><span data-i18n="sound">Звук</span><label class="switch"><input type="checkbox" id="sound-tog"><i></i></label></div>
     <h3 class="group" data-i18n="priceAlerts">Цінові сповіщення</h3>
-    <form class="alert-form" id="alert-form">
-      <select id="al-asset"></select>
-      <select id="al-op"><option value=">" data-i18n="above">вище</option><option value="<" data-i18n="below">нижче</option></select>
-      <input id="al-price" type="number" step="any" min="0" required placeholder="$">
-      <button class="btn primary small" type="submit" data-i18n="add">Додати</button>
-    </form>
+    <form class="alert-form" id="alert-form"><select id="al-asset"></select><select id="al-op"><option value=">" data-i18n="above">вище</option><option value="<" data-i18n="below">нижче</option></select><input id="al-price" type="number" step="any" min="0" required><button class="btn primary small" type="submit" data-i18n="add">Додати</button></form>
     <div id="alert-list" class="alert-list"></div>
-    <p class="muted small" data-i18n="alertNote">Також автоматично: коли BTC, ETH, SOL чи HYPE змінюються більш ніж на 5% за добу.</p>
+    <p class="muted small" data-i18n="alertNote"></p>
+
+    <h3 class="group" data-i18n="telegram">Telegram</h3>
+    <div class="tg" id="tg"></div>
   </div>
 </aside>
 <div class="scrim" id="scrim" hidden></div>

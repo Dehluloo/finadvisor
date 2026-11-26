@@ -196,6 +196,18 @@ def tr(text, tl):
         return None
 
 
+PREFIX = re.compile(r'^((?:[\W_]*\s*)?)(JUST IN|BREAKING|ТЕРМІНОВО|СРОЧНО)\s*:\s*', re.I)
+PREFIX_TR = {'uk': 'ЩОЙНО', 'en': 'JUST IN'}
+
+
+def tr_title(text, tl):
+    m = PREFIX.match(text or '')
+    if not m:
+        return tr(text, tl)
+    rest = tr(text[m.end():], tl)
+    return None if rest is None else f"{m.group(1)}{PREFIX_TR.get(tl, m.group(2))}: {rest}"
+
+
 def translate_items(items):
     for it in items:
         it.setdefault('t', {})
@@ -203,7 +215,7 @@ def translate_items(items):
         for tl in targets:
             if tl in it['t']:
                 continue
-            ti = tr(it['title'], tl)
+            ti = tr_title(it['title'], tl)
             if ti is None:
                 continue
             bo = tr(it['body'][:400], tl) if it.get('body') else ''
