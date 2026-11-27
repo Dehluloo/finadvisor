@@ -266,3 +266,7 @@ Object.assign(I18N.en, {deepTitle:'Claude deep analysis', sec_deep:'Claude deep 
   deepStale:'The analysis is older than 36 hours — rely on the live data below.', deepRisk:'Risk level', deepHorizon:'Horizon', risk_low:'low', risk_medium:'medium', risk_high:'high',
   bias_bullish:'Bullish', bias_neutral:'Neutral', bias_bearish:'Bearish', support:'Support', resistance:'Resistance', invalid:'Invalidated if',
   deepRisks:'Key risks', deepWatch:'What to watch', sources:'Sources', deepAtTime:'at analysis time', deepDisc:'Claude’s analysis is for information only and is not personal financial advice.'});
+Object.assign(I18N.uk, {aAbove200:'Вище 200-денної середньої ({v}) — довгостроковий тренд угору', aBelow200:'Нижче 200-денної середньої ({v}) — довгостроковий тренд униз',
+  aRsiHi:'RSI(14) {v} — перекупленість, ризик відкату', aRsiLo:'RSI(14) {v} — перепроданість, можливий технічний відскок', aRsiMid:'RSI(14) {v} — нейтральний імпульс', aVol:'Волатильність за 30 днів ≈ {v}% річних'});
+Object.assign(I18N.en, {aAbove200:'Above the 200-day average ({v}) — long-term uptrend', aBelow200:'Below the 200-day average ({v}) — long-term downtrend',
+  aRsiHi:'RSI(14) {v} — overbought, pullback risk', aRsiLo:'RSI(14) {v} — oversold, a technical bounce is possible', aRsiMid:'RSI(14) {v} — neutral momentum', aVol:'30-day volatility ≈ {v}% annualised'});

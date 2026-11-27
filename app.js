@@ -1,7 +1,7 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '4.1.1';
+const VERSION = '4.1.2';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
@@ -582,6 +582,11 @@ function renderAuto() {
   why.push(t(last > m20 ? 'aAbove20' : 'aBelow20'));
   if (ch30 > 5) { score++; why.push(t('a30up', {v:pct(ch30)})); } else if (ch30 < -10) { score--; why.push(t('a30dn', {v:pct(ch30)})); } else why.push(t('a30flat', {v:pct(ch30)}));
   why.push(t('aDD', {v:pct(dd)}));
+  if (c.length >= 200) { const m200 = sma(c, 200); if (last > m200) { score += 0.5; why.push(t('aAbove200', {v: money(m200, 0)})); } else { score -= 0.5; why.push(t('aBelow200', {v: money(m200, 0)})); } }
+  { let g = 0, l = 0; const cc = [...c.slice(0, -1), last]; for (let i = 1; i <= 14; i++) { const x = cc[i] - cc[i - 1]; x > 0 ? g += x : l -= x; } g /= 14; l /= 14;
+    for (let i = 15; i < cc.length; i++) { const x = cc[i] - cc[i - 1]; g = (g * 13 + Math.max(x, 0)) / 14; l = (l * 13 + Math.max(-x, 0)) / 14; }
+    const r = l ? 100 - 100 / (1 + g / l) : 100; if (r >= 70) score -= 0.5; why.push(t(r >= 70 ? 'aRsiHi' : r <= 30 ? 'aRsiLo' : 'aRsiMid', {v: Math.round(r)})); }
+  if (c.length >= 31) { const lr = c.slice(-31).map((v, i, a) => i ? Math.log(v / a[i - 1]) : 0).slice(1), mu = lr.reduce((x, y) => x + y, 0) / lr.length; const vol = Math.sqrt(lr.reduce((x, y) => x + (y - mu) ** 2, 0) / (lr.length - 1)) * Math.sqrt(365) * 100; why.push(t('aVol', {v: Math.round(vol)})); }
   if (fv != null) { if (fv >= 75) { score--; why.push(t('aGreed', {v:fv})); } else if (fv <= 25) why.push(t('aFear', {v:fv})); else why.push(t('aMid', {v:fv})); }
   const L = score >= 1 ? ['green', t('vGreen')] : score <= -1 ? ['red', t('vRed')] : ['yellow', t('vYellow')];
   el.innerHTML = `<div class="verdict"><span class="dot ${L[0]}"></span>${esc(L[1])}</div><ul>${why.map(w => `<li>${esc(w)}</li>`).join('')}</ul>`;
@@ -1246,7 +1251,7 @@ async function refreshAll() {
   if (busy) return; busy = true;
   const btn = $('#refresh'); btn.classList.add('spin'); btn.disabled = true; setStatus(t('loading'));
   await Promise.allSettled([loadRates(), loadBrief(), loadLive(), tick(), loadEvents()]);
-  const [fng, btc] = await Promise.allSettled([fetchFng(), getCandles('BTC_USD', '6M')]);
+  const [fng, btc] = await Promise.allSettled([fetchFng(), getCandles('BTC_USD', '6M', 20)]);
   if (fng.status === 'fulfilled') { state.fng = fng.value; store.set('fng', state.fng); }
   if (btc.status === 'fulfilled' && btc.value.rows.length && !btc.value.hist) { state.btcDaily = btc.value.rows; store.set('btcDaily', state.btcDaily); }
   else if (!state.btcDaily) { const h = candlesHist(assetFor('BTC_USD'), 200); if (h) state.btcDaily = h; }
