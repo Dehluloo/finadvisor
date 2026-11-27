@@ -20,6 +20,9 @@ jobs:
       - name: Перевірка ключів
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::Додайте секрет CLOUDFLARE_API_TOKEN"; exit 0; fi
+          T=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | python3 -c "import re,sys; s=sys.stdin.read(); m=re.findall(r'[A-Za-z0-9_-]{40}', s); print(m[-1] if m else s.strip().strip('\"').replace('Bearer ',''))")
+          echo "secret len=${#CLOUDFLARE_API_TOKEN} cleaned len=${#T}"
+          echo "::add-mask::$T"; export CLOUDFLARE_API_TOKEN="$T"; echo "CLOUDFLARE_API_TOKEN=$T" >> $GITHUB_ENV
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=5" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result') or []; print(r[0]['id'] if r else '')")
             if [ -z "$ACC" ]; then ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/memberships" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result') or []; print(r[0]['account']['id'] if r else '')"); fi
