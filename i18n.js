@@ -2,7 +2,7 @@ window.I18N = {
 uk: {
   app:'FinRAD', refresh:'Оновити', notifications:'Сповіщення', settings:'Налаштування', chart:'Графік',
   market:'Мій список', tapAsset:'Натисніть — графік', edit:'Редагувати', done:'Готово', addAsset:'Додати актив', searchAsset:'Пошук: BTC, PEPE, NVDA…',
-  crypto:'Криптовалюти', stocks:'Акції, фонди, золото', perpsGrp:'Контракти (PERP)',
+  crypto:'Криптовалюти', stocks:'Акції та фонди', metals:'Дорогоцінні метали', perpsGrp:'Контракти (PERP)',
   liveNews:'Новини наживо', all:'Усі', important:'Важливі', cat_crypto:'Крипто', cat_economy:'Економіка', cat_politics:'Політика', cat_geo:'Геополітика', cat_markets:'Ринки',
   any:'Будь-які', bull:'Бичачі', bear:'Ведмежі', more:'Показати ще', showOrig:'Показати оригінал', showTr:'Показати переклад', translated:'перекладено автоматично',
   autoTagNote:'Теги й переклад тут автоматичні (без ШІ) — це лише підказка.',
@@ -84,7 +84,7 @@ uk: {
 en: {
   app:'FinRAD', refresh:'Refresh', notifications:'Notifications', settings:'Settings', chart:'Chart',
   market:'My watchlist', tapAsset:'Tap for chart', edit:'Edit', done:'Done', addAsset:'Add asset', searchAsset:'Search: BTC, PEPE, NVDA…',
-  crypto:'Crypto', stocks:'Stocks, funds, gold', perpsGrp:'Contracts (PERP)',
+  crypto:'Crypto', stocks:'Stocks & funds', metals:'Precious metals', perpsGrp:'Contracts (PERP)',
   liveNews:'Live news', all:'All', important:'Important', cat_crypto:'Crypto', cat_economy:'Economy', cat_politics:'Politics', cat_geo:'Geopolitics', cat_markets:'Markets',
   any:'Any', bull:'Bullish', bear:'Bearish', more:'Show more', showOrig:'Show original', showTr:'Show translation', translated:'auto-translated',
   autoTagNote:'Tags and translations here are automatic (no AI) — treat them as a hint.',
@@ -244,11 +244,25 @@ Object.assign(I18N.en, {updating:'Installing the new version…', favEmpty:'No f
   srcTokenHelp:'Your source list is stored in your GitHub repository, so the app needs an access key. On GitHub: Fine-grained token → Repository access: Only select → finadvisor → Permissions: Contents — Read and write → Generate. Paste the key here. It is stored only on this device.',
   srcTokenLink:'Create a key on GitHub ↗', srcSaved:'Saved ✓ New sources will appear in the feed within a few minutes.', srcErr:'Could not save: ', srcNeedToken:'To save changes, add a GitHub key below.',
   srcDef:'default', srcCustom:'yours', srcBad:'This does not look like a channel or website.', srcOk:'working', srcFail:'not responding', tokenSaved:'Key saved on this device.'});
-Object.assign(I18N.uk, {grpFav:'Мій список', grpCrypto:'Крипто', grpStocks:'Фонди й акції', favTip:'Додати в «Мій список» і графік (★) / прибрати'});
-Object.assign(I18N.en, {grpFav:'My list', grpCrypto:'Crypto', grpStocks:'Funds & stocks', favTip:'Add to “My list” and chart (★) / remove'});
+Object.assign(I18N.uk, {grpFav:'Мій список', grpCrypto:'Крипто', grpStocks:'Акції та фонди', grpMetals:'Метали', favTip:'Додати в «Мій список» і графік (★) / прибрати'});
+Object.assign(I18N.en, {grpFav:'My list', grpCrypto:'Crypto', grpStocks:'Stocks & funds', grpMetals:'Metals', favTip:'Add to “My list” and chart (★) / remove'});
 Object.assign(I18N.uk, {sysOnHelp:'Сповіщення з’являтимуться в куті екрана Mac навіть коли вікно FinRAD згорнуте.', sysOffHelp:'Увімкніть, щоб отримувати сповіщення в куті екрана Mac (macOS попросить дозвіл).', blockedHelp:'Заблоковано в системі. Дозвольте сповіщення для браузера в  → Системні параметри → Сповіщення.'});
 Object.assign(I18N.en, {sysOnHelp:'Notifications will appear in the corner of your screen even when FinRAD is minimised.', sysOffHelp:'Turn on to get notifications in the corner of your screen (macOS will ask for permission).', blockedHelp:'Blocked by the system. Allow notifications for the browser in  → System Settings → Notifications.'});
 Object.assign(I18N.uk, {telTitle:'Покращення програми', telOn:'Надсилати анонімні звіти про помилки', telNote:'Програма автоматично надсилає технічні помилки та раз на день — знеособлену статистику (версія, мова, які розділи увімкнені). Без імені, email, портфеля чи будь-яких особистих даних. Це допомагає щомісяця виправляти помилки й покращувати FinRAD.'});
 Object.assign(I18N.en, {telTitle:'Improve the app', telOn:'Send anonymous error reports', telNote:'The app automatically sends technical errors and, once a day, anonymous stats (version, language, enabled sections). No name, email, portfolio or any personal data. This helps fix bugs and improve FinRAD every month.'});
 Object.assign(I18N.uk, {tabHome:'Головна', tabChart:'Графік', tabMarket:'Ринок', tabNews:'Новини', tabCal:'Події', dragHint:'Затисніть заголовок або смужку й перетягніть, щоб змінити місце розділу'});
 Object.assign(I18N.en, {tabHome:'Home', tabChart:'Chart', tabMarket:'Market', tabNews:'News', tabCal:'Events', dragHint:'Press and hold the header or bar, then drag to move this section'});
+Object.assign(I18N.uk, {origLbl:'Оригінал'});
+Object.assign(I18N.en, {origLbl:'Original'});
+Object.assign(I18N.uk, {deepTitle:'Глибокий аналіз Claude', sec_deep:'Глибокий аналіз Claude', askClaude:'Глибокий аналіз від Claude',
+  h_deep:'Щоденний професійний аналіз від Claude: теза дня, ключові рівні підтримки й опору, сценарії з імовірностями, ризики й що відстежувати. Claude оновлює його щоранку на основі точних ринкових даних і пошуку новин. Це інформація, а не індивідуальна порада.',
+  deepNone:'Аналіз ще готується', deepNoneTxt:'Claude оновлює глибокий аналіз щоранку. Наступне оновлення: {t}.', deepUpd:'Оновлено {t}', deepNext:'Наступне: {t}',
+  deepStale:'Аналіз старший за 36 годин — орієнтуйтеся на живі дані нижче.', deepRisk:'Рівень ризику', deepHorizon:'Горизонт', risk_low:'низький', risk_medium:'середній', risk_high:'високий',
+  bias_bullish:'Бичачий', bias_neutral:'Нейтральний', bias_bearish:'Ведмежий', support:'Підтримка', resistance:'Опір', invalid:'Сценарій скасовується, якщо',
+  deepRisks:'Головні ризики', deepWatch:'Що відстежувати', sources:'Джерела', deepAtTime:'на момент аналізу', deepDisc:'Аналіз Claude має інформаційний характер і не є індивідуальною фінансовою порадою.'});
+Object.assign(I18N.en, {deepTitle:'Claude deep analysis', sec_deep:'Claude deep analysis', askClaude:'Deep analysis by Claude',
+  h_deep:'A daily professional analysis by Claude: the thesis of the day, key support and resistance levels, scenarios with probabilities, risks and what to watch. Claude refreshes it every morning from exact market data and a news search. Information only, not personal advice.',
+  deepNone:'Analysis is being prepared', deepNoneTxt:'Claude refreshes the deep analysis every morning. Next update: {t}.', deepUpd:'Updated {t}', deepNext:'Next: {t}',
+  deepStale:'The analysis is older than 36 hours — rely on the live data below.', deepRisk:'Risk level', deepHorizon:'Horizon', risk_low:'low', risk_medium:'medium', risk_high:'high',
+  bias_bullish:'Bullish', bias_neutral:'Neutral', bias_bearish:'Bearish', support:'Support', resistance:'Resistance', invalid:'Invalidated if',
+  deepRisks:'Key risks', deepWatch:'What to watch', sources:'Sources', deepAtTime:'at analysis time', deepDisc:'Claude’s analysis is for information only and is not personal financial advice.'});

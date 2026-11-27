@@ -1,7 +1,7 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '4.0.1';
+const VERSION = '4.1.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
@@ -151,21 +151,29 @@ const BASE_ASSETS = [
   {id:'AAPLUSD-PERP', tk:'AAPL', name:'Apple', g:'s'},
   {id:'TSLAUSD-PERP', tk:'TSLA', name:'Tesla', g:'s'},
   {id:'MSTRUSD-PERP', tk:'MSTR', name:'Strategy', g:'s'},
-  {id:'XAUUSD-PERP', tk:'XAU', name:{uk:'Золото', en:'Gold'}, g:'s', alt:'PAXG_USD', bn:'PAXGUSDT', okx:'PAXG-USDT'},
-  {id:'PAXG_USD', tk:'PAXG', name:'PAX Gold', g:'s', bn:'PAXGUSDT', okx:'PAXG-USDT'}
+  {id:'XAUUSD-PERP', tk:'XAU', name:{uk:'Золото', en:'Gold'}, g:'m', alt:'XAUT_USD', hl:'xyz:GOLD', bn:'PAXGUSDT', okx:'PAXG-USDT'},
+  {id:'XAGUSD-PERP', tk:'XAG', name:{uk:'Срібло', en:'Silver'}, g:'m', hl:'xyz:SILVER'},
+  {id:'XPTUSD-PERP', tk:'XPT', name:{uk:'Платина', en:'Platinum'}, g:'m', hl:'xyz:PLATINUM'},
+  {id:'XPDUSD-PERP', tk:'XPD', name:{uk:'Паладій', en:'Palladium'}, g:'m', hl:'xyz:PALLADIUM'}
 ];
-const KNOWN = Object.fromEntries(BASE_ASSETS.map(a => [a.id, a]));
+const EXTRA_ASSETS = [
+  {id:'PAXG_USD', tk:'PAXG', name:{uk:'PAX Gold (токен золота)', en:'PAX Gold (gold token)'}, g:'m', bn:'PAXGUSDT', okx:'PAXG-USDT'},
+  {id:'XAUT_USD', tk:'XAUT', name:{uk:'Tether Gold (токен золота)', en:'Tether Gold (gold token)'}, g:'m', okx:'XAUT-USDT'}
+];
+const KNOWN = Object.fromEntries([...BASE_ASSETS, ...EXTRA_ASSETS].map(a => [a.id, a]));
+const METALS = new Set(['XAU','XAG','XPT','XPD','PAXG','XAUT','GOLD','SILVER','PLATINUM','PALLADIUM']);
 const STOCKS = new Set(['SPY','QQQ','NVDA','AAPL','TSLA','MSTR','XAU','XAG','MSFT','AMZN','GOOGL','META','COIN','HOOD','AMD','NFLX','IWM','DIA','PLTR','GOLD','SILVER','WTI']);
 const cgNames = store.get('cgNames', {});
 function assetFor(id) {
   if (KNOWN[id]) return KNOWN[id];
-  if (id.endsWith('-PERP')) { const tk = id.replace(/USD-PERP$/, '').replace(/-PERP$/, ''); return KNOWN[id] = {id, tk, name: cgNames[tk] || tk, g: STOCKS.has(tk) ? 's' : 'p'}; }
+  if (id.endsWith('-PERP')) { const tk = id.replace(/USD-PERP$/, '').replace(/-PERP$/, ''); return KNOWN[id] = {id, tk, name: cgNames[tk] || tk, g: METALS.has(tk) ? 'm' : STOCKS.has(tk) ? 's' : 'p'}; }
   const tk = id.split('_')[0];
-  return KNOWN[id] = {id, tk, name: cgNames[tk] || tk, g: 'c', bn: tk + 'USDT', okx: tk + '-USDT'};
+  return KNOWN[id] = {id, tk, name: cgNames[tk] || tk, g: METALS.has(tk) ? 'm' : 'c', bn: tk + 'USDT', okx: tk + '-USDT'};
 }
 const nameOf = (a) => typeof a.name === 'object' ? a.name[LANG] : a.name;
 const fullName = (a) => { const n = nameOf(a); return n.toUpperCase().includes(a.tk) ? n : n + ' (' + a.tk + ')'; };
 let WATCH = store.get('watch', BASE_ASSETS.map(a => a.id));
+if (!store.get('mig:metals', false)) { const add = ['XAUUSD-PERP', 'XAGUSD-PERP', 'XPTUSD-PERP', 'XPDUSD-PERP'].filter(id => !WATCH.includes(id)); if (add.length) { WATCH = [...WATCH, ...add]; store.set('watch', WATCH); } store.set('mig:metals', true); }
 const watchAssets = () => WATCH.map(assetFor);
 const MOVERS = ['BTC_USD', 'ETH_USD', 'SOL_USD', 'HYPE_USD'];
 const TF = {
@@ -251,7 +259,12 @@ async function fetchTickersFallback() {
     const syms = [...new Set(watchAssets().filter(a => a.bn).map(a => a.bn))];
     const j = await getJSON('https://data-api.binance.vision/api/v3/ticker/24hr?symbols=' + encodeURIComponent(JSON.stringify(syms)));
     const m = Object.fromEntries(j.map(x => [x.symbol, x]));
-    for (const a of watchAssets()) if (a.bn && m[a.bn]) { const x = m[a.bn]; out[a.id] = {last:+x.lastPrice, high:+x.highPrice, low:+x.lowPrice, chg:+x.priceChangePercent, t:+x.closeTime}; }
+    for (const a of watchAssets()) if (a.bn && m[a.bn] && !a.hl) { const x = m[a.bn]; out[a.id] = {last:+x.lastPrice, high:+x.highPrice, low:+x.lowPrice, chg:+x.priceChangePercent, t:+x.closeTime}; }
+  } catch {}
+  const hls = watchAssets().filter(a => a.hl && !out[a.id]);
+  if (hls.length) try {
+    const [meta, ctx] = await hl({type: 'metaAndAssetCtxs', dex: 'xyz'}), ix = Object.fromEntries(meta.universe.map((u, i) => [u.name, i]));
+    for (const a of hls) { const c = ctx[ix[a.hl]]; if (!c || !+c.markPx) continue; const p = +c.markPx, p0 = +c.prevDayPx || p; out[a.id] = {last: p, high: Math.max(p, p0), low: Math.min(p, p0), chg: (p / p0 - 1) * 100, t: Date.now()}; }
   } catch {}
   return out;
 }
@@ -263,6 +276,11 @@ async function candlesCDC(inst, tf, n) {
 }
 async function candlesBN(sym, tf, n) { const j = await getJSON(`https://data-api.binance.vision/api/v3/klines?symbol=${sym}&interval=${tf}&limit=${Math.min(1000, n)}`); return norm(j.map(k => ({t:+k[0], o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5]}))); }
 async function candlesOKX(inst, tf, n) { const j = await getJSON(`https://www.okx.com/api/v5/market/candles?instId=${inst}&bar=${tf}&limit=${Math.min(300, n)}`); return norm((j.data || []).map(k => ({t:+k[0], o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5]}))); }
+async function candlesHL(coin, iv, n) {
+  const ms = {'5m': 3e5, '15m': 9e5, '1h': 36e5, '4h': 144e5, '1D': 864e5}[iv] || 36e5, end = Date.now();
+  const j = await hl({type: 'candleSnapshot', req: {coin, interval: iv === '1D' ? '1d' : iv, startTime: end - ms * (n + 2), endTime: end}});
+  return (j || []).map(r => ({t: r.t, o: +r.o, h: +r.h, l: +r.l, c: +r.c, v: +r.v})).slice(-n);
+}
 function candlesHist(a, n) {
   const key = a.hist || (a.id === 'SPYUSD-PERP' ? 'SPX' : a.id === 'XAUUSD-PERP' ? 'GOLD' : '');
   const h = (state.briefUk.hist || {})[key]; if (!h) return null;
@@ -274,6 +292,7 @@ async function getCandles(id, tfKey, extra = 0) {
   if (a.alt) tries.push(['Crypto.com', () => candlesCDC(a.alt, tf.cdc, n)]);
   if (a.bn) tries.push(['Binance', () => candlesBN(a.bn, tf.bn, n)]);
   if (a.okx) tries.push(['OKX', () => candlesOKX(a.okx, tf.okx, n)]);
+  if (a.hl) tries.push(['Hyperliquid', () => candlesHL(a.hl, tf.cdc, n)]);
   for (const [src, fn] of tries) { try { const rows = await fn(); if (rows.length > 2) { store.set('c:' + id + ':' + tfKey, rows.slice(-(tf.n + 50))); return {rows, src}; } } catch {} }
   const cached = store.get('c:' + id + ':' + tfKey, null);
   if (cached) return {rows: cached, src: t('saved'), stale: true};
@@ -382,11 +401,11 @@ function sparkSVG(vals, color, h = 30, fill) {
 function renderHero() {
   const b = (state.brief.brief || [])[0] || {}, el = $('#sec-pulse');
   el.classList.remove('red', 'yellow', 'green'); if (b.signal_light) el.classList.add(b.signal_light);
-  $('#hero-signal').textContent = b.signal || t('noBrief');
-  $('#hero-summary').textContent = b.summary || '';
+  $('#hero-signal').textContent = b.signal ? L10(b.signal) : t('noBrief');
+  $('#hero-summary').innerHTML = tx(b.summary || '');
   $('#hero-date').textContent = b.date ? t('briefFrom') + ' ' + new Date(b.date + 'T12:00:00').toLocaleDateString(LOC(), {day:'numeric', month:'long'}) : t('dailyBrief');
   const srcChip = state.brief.source === 'auto' ? t('briefAuto') : state.brief.source === 'claude' ? t('briefClaude') : '';
-  $('#hero-chips').innerHTML = [srcChip, b.regime && t('regime') + ': ' + b.regime, b.data_as_of && t('dataAsOf') + ': ' + b.data_as_of].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
+  $('#hero-chips').innerHTML = [srcChip, b.regime && t('regime') + ': ' + L10(b.regime), b.data_as_of && t('dataAsOf') + ': ' + b.data_as_of].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
 }
 function pulseParts() {
   const parts = [];
@@ -437,7 +456,7 @@ function renderTape() {
 const prevPx = {};
 function renderWatch() {
   $('#watch-edit').textContent = state.editWatch ? t('done') : t('edit');
-  const groups = [['c', t('crypto')], ['s', t('stocks')], ['p', t('perpsGrp')]];
+  const groups = [['c', t('crypto')], ['s', t('stocks')], ['m', t('metals')], ['p', t('perpsGrp')]];
   $('#watch-grid').innerHTML = groups.map(([g, label]) => {
     const as = watchAssets().filter(a => a.g === g); if (!as.length) return '';
     const maxC = Math.max(2, Math.floor(($('#watch-grid').clientWidth + 10) / 160)), cols = Math.min(as.length, Math.ceil(as.length / Math.ceil(as.length / maxC)));
@@ -531,7 +550,7 @@ async function loadChart(quiet) {
   redrawChart();
   const a = assetFor(state.asset), notes = [];
   if (res.src) notes.push(t('source') + ': ' + res.src + (res.stale ? ' (' + t('notLive') + ')' : ''));
-  if (a.g === 's' && a.id.endsWith('PERP')) notes.push(t('perpNote'));
+  if ((a.g === 's' || a.g === 'm') && a.id.endsWith('PERP')) notes.push(t('perpNote'));
   if (res.hist && a.id === 'SPYUSD-PERP') notes.push(t('spxNote'));
   $('#chart-note').textContent = notes.join(' · ');
 }
@@ -783,11 +802,11 @@ function buildEvents(from, to) {
     const dup = kind !== 'ff' && out.find(x => x.kind === kind && ymd(x.ts) === ymd(d));
     if (dup) { if (vals) dup.vals = vals; continue; }
     const flag = {USD:'🇺🇸', EUR:'🇪🇺', CNY:'🇨🇳', GBP:'🇬🇧', JPY:'🇯🇵'}[e.country] || e.country;
-    out.push({ts: d, kind: 'ff', imp: e.impact, title: `${flag} ${LANG === 'uk' ? (FF_UA[e.title] || e.title) : e.title}`, vals});
+    out.push({ts: d, kind: 'ff', imp: e.impact, title: `${flag} ${LANG === 'uk' ? (FF_UA[e.title] || L10(e.title)) : e.title}`, orig: LANG === 'uk' && !FF_UA[e.title] ? e.title : '', vals});
   }
   for (const c of (state.brief.calendar || [])) { if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date)) continue;
     if (out.some(x => ymd(x.ts) === c.date && (x.kind === 'fed' || x.kind === 'cpi' || x.kind === 'jobs' || x.kind === 'holiday') && /ФРС|Fed|CPI|інфляц|inflation|NFP|робоч|jobs|закрит|closed/i.test(c.event))) continue;
-    out.push({ts: new Date(c.date + 'T12:00:00'), kind: 'brief', imp: 'Medium', title: c.event, why: c.why, allDay: true}); }
+    out.push({ts: new Date(c.date + 'T12:00:00'), kind: 'brief', imp: 'Medium', title: L10(c.event), why: L10(c.why), allDay: true}); }
   for (let y = from.getFullYear(); y <= to.getFullYear(); y++) for (let m = 0; m < 12; m++) {
     const q = m % 3 === 2, opx = nthWeekday(y, m, 5, 3); opx.setUTCHours(21);
     out.push({ts: opx, kind: 'opex', imp: q ? 'High' : 'Low', title: q ? t('opexQ') : t('opexT'), why: t('opexW')});
@@ -805,7 +824,7 @@ function openEvent(e) {
   const left = [dd && dd + ' ' + t('d_'), hh && hh + ' ' + t('h_'), !dd && mm + ' ' + t('m_')].filter(Boolean).join(' ');
   const when = e.ts.toLocaleDateString(LOC(), {weekday:'long', day:'numeric', month:'long', year:'numeric'}) + (e.allDay ? '' : ', ' + hhmm(e.ts) + ' (' + t('evLocal') + ')');
   m.innerHTML = `<div class="m-card"><div class="m-top"><span class="m-kind" style="background:${KCOL[e.kind]}">${esc(t('ev_' + e.kind))}</span><button class="icon-btn sm" data-mclose>✕</button></div>
-    <h3>${esc(e.title)}</h3>
+    <h3>${esc(e.title)}</h3>${e.orig && e.orig !== e.title.replace(/^\S+\s/, '') ? `<div class="muted small">${t('origLbl')}: ${esc(e.orig)}</div>` : ''}
     <div class="m-grid"><div class="muted small">${t('evTime')}</div><div>${esc(when)}<div class="muted small">${diff > 0 ? t('evIn', {t: left}) : t('evPassed')}</div></div>
     <div class="muted small">${t('evImp')}</div><div><span class="imp-dot ${e.imp}"></span> ${t('impact_' + e.imp)}</div>
     ${e.vals ? `<div class="muted small">${t('dataAsOf')}</div><div>${esc(e.vals)}</div>` : ''}</div>
@@ -861,21 +880,55 @@ async function loadEvents() { try { const j = await getJSON(BASE + 'data/events.
 // ---------- бриф: розділи ----------
 function renderBriefSections() {
   const B = state.brief;
-  $('#lights').innerHTML = (B.posture || []).map(p => `<div class="light"><div class="lh"><span class="dot ${esc(p.light)}"></span>${esc(p.asset)}<span class="pos">${esc(p.posture || '')}</span></div><p>${esc(p.plain)}</p></div>`).join('') || `<div class="muted">${t('noBriefData')}</div>`;
-  $('#plain').innerHTML = (B.plain || []).slice().sort((a, b) => a.order - b.order).map(p => `<div class="pl"><b>${esc(p.label)}</b><p>${esc(p.text)}</p></div>`).join('');
+  $('#lights').innerHTML = (B.posture || []).map(p => `<div class="light"><div class="lh"><span class="dot ${esc(p.light)}"></span>${esc(L10(p.asset))}<span class="pos">${esc(L10(p.posture || ''))}</span></div><p>${tx(p.plain)}</p></div>`).join('') || `<div class="muted">${t('noBriefData')}</div>`;
+  $('#plain').innerHTML = (B.plain || []).slice().sort((a, b) => a.order - b.order).map(p => `<div class="pl"><b>${esc(L10(p.label))}</b><p>${tx(p.text)}</p></div>`).join('');
   renderNews();
   const SC = (s) => /ведм|bear|ризик|risk/i.test(s) ? 'dn' : /бич|bull|сприят|favo/i.test(s) ? 'up' : 'warn';
-  $('#outlook').innerHTML = (B.outlook || []).map(o => `<div class="ol"><div class="oh"><span>${esc(o.area)}</span><span class="stance ${SC(o.stance)}">${esc(o.stance)}</span></div><div class="muted">${esc(o.text)}</div></div>`).join('');
+  $('#outlook').innerHTML = (B.outlook || []).map(o => `<div class="ol"><div class="oh"><span>${esc(L10(o.area))}</span><span class="stance ${SC(o.stance)}">${esc(L10(o.stance))}</span></div><div class="muted">${tx(o.text)}</div></div>`).join('');
   const W = (B.weekly || []).slice().sort((a, b) => a.order - b.order);
   $('#week').textContent = W[0] ? W[0].week : '';
-  $('#weekly').innerHTML = W.map(w => `<div><b>${esc(w.label)}</b><p>${esc(w.text)}</p></div>`).join('');
-  $('#tips').innerHTML = (B.general || []).slice().sort((a, b) => a.order - b.order).map(g => `<li>${esc(g.text)}</li>`).join('');
+  $('#weekly').innerHTML = W.map(w => `<div><b>${esc(L10(w.label))}</b><p>${tx(w.text)}</p></div>`).join('');
+  $('#tips').innerHTML = (B.general || []).slice().sort((a, b) => a.order - b.order).map(g => `<li>${tx(g.text)}</li>`).join('');
   renderCal(); requestAnimationFrame(balanceAll);
 }
+// ---------- переклад на мову інтерфейсу (те, що не встиг перекласти сервер) ----------
+const TR = {cache: store.get('trc', {}), queue: [], busy: 0, fails: 0, pause: 0, timer: 0};
+const trHash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+const trKey = (text) => LANG + ':' + trHash(text);
+function needsTr(text) {
+  if (!text) return false; const lat = (text.match(/[A-Za-z]/g) || []).length, cyr = (text.match(/[А-Яа-яЇїІіЄєҐґЁёЫыЭэЪъ]/g) || []).length;
+  if (lat + cyr < 4) return false;
+  return LANG === 'uk' ? lat > cyr * 1.5 : cyr > lat;
+}
+function trGet(text) {
+  if (!needsTr(text)) return null; const k = trKey(text), v = TR.cache[k];
+  if (v) return v;
+  if (!TR.queue.some(q => q.k === k) && TR.queue.length < 400) TR.queue.push({k, text}); trPump(); return null;
+}
+function trPump() {
+  if (TR.busy >= 2 || !TR.queue.length || Date.now() < TR.pause) { if (TR.queue.length && !TR.timer) TR.timer = setTimeout(() => { TR.timer = 0; trPump(); }, Math.max(800, TR.pause - Date.now())); return; }
+  const job = TR.queue.shift(); TR.busy++;
+  const PFX = job.text.match(/^((?:[\W_]*\s*)?)(JUST IN|BREAKING|ТЕРМІНОВО|СРОЧНО|ЩОЙНО)\s*:\s*/i), body = PFX ? job.text.slice(PFX[0].length) : job.text;
+  getJSON(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${LANG}&dt=t&q=${encodeURIComponent(body.slice(0, 1800))}`, 10000)
+    .then(j => { let out = (j[0] || []).map(x => x && x[0]).filter(Boolean).join('').trim(); if (!out) return; if (PFX) out = `${PFX[1]}${LANG === 'uk' ? 'ЩОЙНО' : 'JUST IN'}: ${out}`; TR.cache[job.k] = out; TR.fails = 0; trSave(); trRender(); })
+    .catch(() => { if (++TR.fails >= 3) { TR.pause = Date.now() + 60e3; TR.fails = 0; } })
+    .finally(() => { TR.busy--; setTimeout(trPump, 250); });
+}
+let trSaveT = 0, trRenderT = 0;
+function trSave() { clearTimeout(trSaveT); trSaveT = setTimeout(() => { const ks = Object.keys(TR.cache); if (ks.length > 1500) for (const k of ks.slice(0, ks.length - 1200)) delete TR.cache[k]; store.set('trc', TR.cache); }, 1500); }
+function trRender() { clearTimeout(trRenderT); trRenderT = setTimeout(() => { try { renderFeed(); renderBriefSections(); renderHero(); renderCal(); renderDeep(); } catch {} }, 400); }
+// текст для показу: переклад (якщо є) + маленьке посилання «Оригінал» під ним
+function L10(text) { const tr = trGet(text); return tr && !state.showOrig[trKey(text)] ? tr : text; }
+function tx(text, small) {
+  if (!text) return ''; const tr = trGet(text); if (!tr) return esc(text);
+  const k = trKey(text), orig = state.showOrig[k];
+  return `${esc(orig ? text : tr)}${small ? '' : ` <button type="button" class="lnk tro" data-tro="${k}">${orig ? t('showTr') : t('showOrig')}</button>`}`;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-tro]'); if (!b) return; e.preventDefault(); e.stopPropagation(); state.showOrig[b.dataset.tro] = !state.showOrig[b.dataset.tro]; trRender(); });
 const SENT = (s) => ({Bullish:t('bullish'), Bearish:t('bearish'), Neutral:t('neutral'), Mixed:t('mixed')}[s] || s);
 function renderNews() {
   const N = (state.brief.news || []).filter(n => state.newsF === 'all' || n.impact === state.newsF);
-  $('#news').innerHTML = N.map(n => `<div class="nw"><span class="tag ${esc(n.impact)}">${SENT(n.impact)}</span><div class="ti">${esc(n.title)}</div><div class="why">${esc(n.why)}</div><div class="meta">${esc([n.category, n.assets, n.source].filter(Boolean).join(' · '))}</div></div>`).join('') || `<div class="muted">${t('noNewsFilter')}</div>`;
+  $('#news').innerHTML = N.map(n => `<div class="nw"><span class="tag ${esc(n.impact)}">${SENT(n.impact)}</span><div class="ti">${tx(n.title, true)}</div><div class="why">${tx(n.why)}</div><div class="meta">${esc([n.category, n.assets, n.source].filter(Boolean).join(' · '))}</div></div>`).join('') || `<div class="muted">${t('noNewsFilter')}</div>`;
 }
 
 // ---------- новини наживо ----------
@@ -884,7 +937,11 @@ function feedItems() {
   return items.filter(i => !off.has(i.src.replace('Telegram · ', '')) && (state.liveCat === 'all' || (state.liveCat === 'imp' ? i.imp : state.liveCat === 'telegram' ? i.kind === 'telegram' : i.cat === state.liveCat)) && (state.liveSent === 'all' || i.sent === state.liveSent));
 }
 const sameLang = (i) => i.lang === LANG;
-function itemText(i) { const tr = !sameLang(i) && i.t && i.t[LANG]; return tr && !state.showOrig[i.id] ? {title: tr.title, body: tr.body, tr: true} : {title: i.title, body: i.body, tr: false, canTr: !!tr}; }
+function itemText(i) {
+  let tr = !sameLang(i) && i.t && i.t[LANG] && i.t[LANG].title ? i.t[LANG] : null;
+  if (!tr && !sameLang(i)) { const ti = trGet(i.title), bo = i.body ? trGet(i.body.slice(0, 400)) : ''; if (ti) tr = {title: ti, body: bo || (i.body ? '' : '')}; if (tr && i.body && !bo) tr.body = i.body; }
+  return tr && !state.showOrig[i.id] ? {title: tr.title, body: tr.body, tr: true} : {title: i.title, body: i.body, tr: false, canTr: !!tr};
+}
 function trUrl(i) { return `https://translate.google.com/?sl=auto&tl=${LANG}&text=${encodeURIComponent((i.title + '. ' + (i.body || '')).slice(0, 1200))}&op=translate`; }
 function renderFeed() {
   const L = state.live, all = feedItems(), list = all.slice(0, state.feedN), seen = new Set(store.get('seenFeed', []));
@@ -905,19 +962,24 @@ function renderFeed() {
 // ---------- сповіщення ----------
 let notifs = store.get('notifs', []);
 function updateBadge() { const n = notifs.filter(x => !x.read).length; const b = $('#badge'); b.textContent = n > 99 ? '99+' : n; b.hidden = !n; }
-function renderNotifs() { $('#notif-list').innerHTML = notifs.map(n => `<a class="ni${n.read ? '' : ' unread'}" ${n.url ? `href="${esc(n.url)}" target="_blank" rel="noopener"` : ''}><div class="ni-h"><span class="ni-k ${n.kind}">${esc(n.head)}</span><time>${ago(n.ts)}</time></div><div>${esc(n.text)}</div></a>`).join('') || `<div class="muted pad">${t('noNotif')}</div>`; }
+document.addEventListener('click', e => { const a = e.target.closest('#notif-list [data-nid]'); if (!a) return; e.preventDefault(); closePanels(); openFromLink('?n=' + encodeURIComponent(a.dataset.nid)); });
+function renderNotifs() { $('#notif-list').innerHTML = notifs.map(n => `<a class="ni${n.read ? '' : ' unread'}" ${n.nid ? `href="#" data-nid="${esc(n.nid)}"` : n.url ? `href="${esc(n.url)}" target="_blank" rel="noopener"` : ''}><div class="ni-h"><span class="ni-k ${n.kind}">${esc(n.head)}</span><time>${ago(n.ts)}</time></div><div>${esc(n.text)}</div></a>`).join('') || `<div class="muted pad">${t('noNotif')}</div>`; }
 let audioCtx;
 function beep() { if (!store.get('sound', false)) return; try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = 880; g.gain.setValueAtTime(.0001, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.15, audioCtx.currentTime + .02); g.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + .35); o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + .4); } catch {} }
-function notify(kind, head, text, url) {
-  const n = {id: Date.now() + Math.random(), kind, head, text, url, ts: new Date().toISOString(), read: false};
+function notify(kind, head, text, url, nid) {
+  const n = {id: Date.now() + Math.random(), kind, head, text, url, nid, ts: new Date().toISOString(), read: false};
   notifs.unshift(n); notifs = notifs.slice(0, 60); store.set('notifs', notifs); updateBadge(); if (!$('#drawer').hidden) renderNotifs();
   const el = document.createElement('div'); el.className = 'toast ' + kind; el.innerHTML = `<button class="toast-x" aria-label="${t('close')}">✕</button><div class="toast-h">${esc(head)}</div><div>${esc(text)}</div>`;
   const dismiss = (dir = 0) => { el.style.transition = 'transform .25s, opacity .25s'; el.style.transform = `translateX(${dir * 120}%)`; el.style.opacity = '0'; setTimeout(() => el.remove(), 260); };
   let sx = null, dx = 0, sy = 0;
-  el.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; dx = 0; el.style.transition = 'none'; try { el.setPointerCapture(e.pointerId); } catch {} });
+  const x = el.querySelector('.toast-x');
+  x.addEventListener('pointerdown', e => { e.stopPropagation(); });
+  x.addEventListener('pointerup', e => { e.stopPropagation(); });
+  x.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); dismiss(1); });
+  el.addEventListener('pointerdown', e => { if (e.target.closest('.toast-x')) return; sx = e.clientX; sy = e.clientY; dx = 0; el.style.transition = 'none'; try { el.setPointerCapture(e.pointerId); } catch {} });
   el.addEventListener('pointermove', e => { if (sx == null) return; dx = e.clientX - sx; const dy = e.clientY - sy; if (Math.abs(dy) > Math.abs(dx) && dy < -20) { dismiss(0); sx = null; return; } el.style.transform = `translateX(${dx}px)`; el.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / 220)); });
   el.addEventListener('pointerup', e => { if (sx == null) return; sx = null; if (Math.abs(dx) > 70) { dismiss(Math.sign(dx)); return; } el.style.transition = 'transform .2s, opacity .2s'; el.style.transform = ''; el.style.opacity = '';
-    if (Math.abs(dx) < 6) { if (e.target.closest('.toast-x')) dismiss(1); else { if (url) open(url, '_blank', 'noopener'); dismiss(0); } } });
+    if (Math.abs(dx) < 6) { const hit = document.elementFromPoint(e.clientX, e.clientY); if (hit && hit.closest('.toast-x')) { dismiss(1); return; } if (nid) openFromLink('?n=' + encodeURIComponent(nid)); else if (url && /^https?:/.test(url) && !url.startsWith(location.origin)) open(url, '_blank', 'noopener'); else if (url) openFromLink(url); dismiss(0); } });
   el.addEventListener('pointercancel', () => { sx = null; el.style.transform = ''; el.style.opacity = ''; });
   $('#toasts').prepend(el); while ($('#toasts').children.length > 3) $('#toasts').lastChild.remove();
   setTimeout(() => { if (el.isConnected) dismiss(0); }, 10000);
@@ -928,7 +990,7 @@ function checkNewsNotifs(fresh) {
   const mode = store.get('nmode', 'imp'), seen = new Set(store.get('seenFeed', [])), items = (fresh && fresh.items) || [];
   if (!seen.size) { store.set('seenFeed', items.map(i => i.id)); return; }
   const novel = items.filter(i => !seen.has(i.id));
-  if (mode !== 'off') novel.filter(i => mode === 'all' || i.imp).slice(0, 5).reverse().forEach(i => { const x = itemText(i); notify(i.sent, (i.imp ? '⚡ ' : '') + i.src, x.title, i.url); });
+  if (mode !== 'off') novel.filter(i => mode === 'all' || i.imp).slice(0, 5).reverse().forEach(i => { const x = itemText(i); notify(i.sent, (i.imp ? '⚡ ' : '') + i.src, x.title, i.url, i.id); });
   store.set('seenFeed', [...seen, ...novel.map(i => i.id)].slice(-600));
 }
 function checkPriceAlerts() {
@@ -1083,8 +1145,9 @@ function renderPortfolio() {
 }
 
 // ---------- розділи: показ і порядок ----------
-const SECTIONS = [['pulse', 1], ['since', 1], ['chart', 1], ['watch', 1], ['live', 1], ['markets', 1], ['bubbles', 1], ['fng', 1], ['auto', 1], ['liq', 1], ['perps', 1], ['lights', 1], ['plain', 1], ['news', 1], ['cal', 1], ['outlook', 1], ['weekly', 1], ['portfolio', 0], ['tips', 0]];
-function getLayout() { const saved = store.get('layout', null); if (!saved) return SECTIONS.map(([k, on]) => ({k, on: !!on})); const known = new Set(saved.map(s => s.k)); return [...saved.filter(s => SECTIONS.some(x => x[0] === s.k)), ...SECTIONS.filter(([k]) => !known.has(k)).map(([k, on]) => ({k, on: !!on}))]; }
+const SECTIONS = [['pulse', 1], ['deep', 1], ['since', 1], ['chart', 1], ['watch', 1], ['live', 1], ['markets', 1], ['bubbles', 1], ['fng', 1], ['auto', 1], ['liq', 1], ['perps', 1], ['lights', 1], ['plain', 1], ['news', 1], ['cal', 1], ['outlook', 1], ['weekly', 1], ['portfolio', 0], ['tips', 0]];
+function getLayout() { let saved = store.get('layout', null);
+  if (saved && !saved.some(s => s.k === 'deep')) { const i = saved.findIndex(s => s.k === 'pulse'); saved.splice(i + 1, 0, {k: 'deep', on: true}); store.set('layout', saved); } if (!saved) return SECTIONS.map(([k, on]) => ({k, on: !!on})); const known = new Set(saved.map(s => s.k)); return [...saved.filter(s => SECTIONS.some(x => x[0] === s.k)), ...SECTIONS.filter(([k]) => !known.has(k)).map(([k, on]) => ({k, on: !!on}))]; }
 const isOn = (k) => { const s = getLayout().find(x => x.k === k); return !s || s.on; };
 function applyLayout() {
   const main = $('#main'), foot = $('.foot', main);
@@ -1122,24 +1185,41 @@ async function loadBrief() {
   let pick = F;
   if (LANG === 'en' && F) { try { let j; try { j = await getJSON(LIVE + 'brief_en.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/brief_en.json?t=' + Date.now(), 10000); } const a = (F.brief || [])[0], b = (j.brief || [])[0]; if (j && b && (!a || a.date === b.date)) pick = j; } catch {} }
   if (auto && !(claudeAt && Date.now() - claudeAt < 24 * 3600e3)) pick = auto;
+  try { const d = await getJSON(BASE + 'data/deep.json?t=' + Date.now(), 12000); if (d && d.uk && d.en) { state.deep = d; store.set('deep', d); } } catch { if (!state.deep) state.deep = store.get('deep', null); }
+  const D = state.deep, dFresh = D && Date.now() - Date.parse(D.generated) < 36 * 3600e3;
+  if (dFresh && D[LANG]) pick = Object.assign({}, D[LANG], {source: 'claude', generated: D.generated});
+  if (!pick) pick = auto || F || {};
   state.brief = Object.assign({}, pick, {hist: (F && F.hist) || pick.hist});
-  renderHero(); renderBriefSections();
+  renderHero(); renderBriefSections(); renderDeep();
 }
-// Глибокий аналіз від Claude: відкриває Claude з готовим запитом і свіжими даними з програми
-function claudePrompt() {
-  const P = (state.live && state.live.perps) || {}, f = state.fng && state.fng.length ? state.fng.at(-1).v : null;
-  const px = watchAssets().slice(0, 12).map(a => { const k = state.tickers[a.id]; return k ? `${a.tk} ${k.last} (${k.chg >= 0 ? '+' : ''}${(+k.chg).toFixed(2)}% 24h)` : null; }).filter(Boolean).join('; ');
-  const fund = ['BTC', 'ETH'].filter(k => P[k]).map(k => `${k} ${(P[k].funding_h * 800).toFixed(4)}%/8h, OI $${Math.round(P[k].oi_usd / 1e6)}M`).join('; ');
-  const news = ((state.live && state.live.items) || []).filter(i => i.imp).slice(0, 12).map(i => `- [${i.sent}] ${i.src}: ${itemText(i).title}`).join('\n');
-  const now = new Date(), ev = buildEvents(now, new Date(+now + 14 * 864e5)).filter(e => e.imp === 'High').slice(0, 8).map(e => `- ${e.ts.toISOString().slice(0, 16).replace('T', ' ')} UTC ${e.title}`).join('\n');
-  const L = LANG === 'en';
-  const head = L ? 'You are my cautious financial analyst for the FinRAD app. Using the fresh data below (and a web search for anything important from the last 24 hours), give a deep market analysis in simple English: overall signal and risk level, crypto / US stocks / gold / cash outlook, what drives the market now, key risks, upcoming events, and what cautious investors usually do in such a period. Not personal advice.'
-    : 'Ти мій обережний фінансовий аналітик для програми FinRAD. На основі свіжих даних нижче (і пошуку в інтернеті важливого за останні 24 години) зроби глибокий аналіз ринку простою українською: загальний сигнал і рівень ризику, прогноз по крипті / акціях США / золоту / кешу, що зараз рухає ринок, головні ризики, найближчі події і що зазвичай роблять обережні інвестори в такий період. Це не індивідуальна порада.';
-  const tail = L ? 'If you have access to the GitHub repository dehluloo/finadvisor, also update data/brief.json in the same format with "source": "claude" and "generated" (ISO time) so FinRAD shows your analysis.'
-    : 'Якщо маєш доступ до GitHub-репозиторію dehluloo/finadvisor, онови також data/brief.json у тому ж форматі з полями "source": "claude" і "generated" (час ISO), щоб FinRAD показав твій аналіз.';
-  return `${head}\n\n${L ? 'Data' : 'Дані'} (${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC):\n${L ? 'Prices' : 'Ціни'}: ${px}\n${L ? 'Fear & Greed' : 'Індекс страху й жадібності'}: ${f ?? '—'}/100\n${L ? 'Funding/OI' : 'Фандинг/OI'}: ${fund || '—'}\n${L ? 'Important news' : 'Важливі новини'}:\n${news || '—'}\n${L ? 'Events' : 'Події'}:\n${ev || '—'}\n\n${tail}`.slice(0, 6000);
+// ---------- глибокий аналіз Claude (data/deep.json, оновлює щоденне завдання Claude) ----------
+const BIAS_C = {bullish: 'up', neutral: 'warn', bearish: 'dn'};
+function nextDeepAt() { const n = new Date(), k = new Date(n.toLocaleString('en-US', {timeZone: 'Europe/Kyiv'})), off = k - n, d = new Date(n); d.setTime(+n + off); d.setHours(8, 47, 0, 0); if (d <= new Date(+n + off)) d.setDate(d.getDate() + 1); return new Date(+d - off); }
+function renderDeep() {
+  const box = $('#deep'); if (!box) return;
+  const D = state.deep, X = D && D[LANG] && D[LANG].deep;
+  const nxt = nextDeepAt(), nxtTxt = nxt.toLocaleString(LOC(), {weekday: 'short', hour: '2-digit', minute: '2-digit'});
+  if (!X) { $('#deep-meta').textContent = ''; box.innerHTML = `<div class="deep-empty"><b>${t('deepNone')}</b><p class="muted">${t('deepNoneTxt', {t: nxtTxt})}</p></div>`; return; }
+  const age = Date.now() - Date.parse(D.generated), stale = age > 36 * 3600e3;
+  $('#deep-meta').innerHTML = `<span class="chip${stale ? ' warn' : ''}">${t('deepUpd', {t: ago(D.generated)})}</span><span class="chip">${t('deepNext', {t: nxtTxt})}</span>`;
+  const usd = (v) => '$' + (+v).toLocaleString(LOC(), {maximumFractionDigits: v >= 1000 ? 0 : v >= 10 ? 2 : 4});
+  const lvl = (arr) => (arr || []).filter(v => v != null && v !== '').map(v => typeof v === 'number' ? usd(v) : esc(v)).join(' · ') || '—';
+  const rl = {low: 'green', medium: 'yellow', high: 'red'}[X.risk_level] || 'yellow';
+  box.innerHTML = `${stale ? `<div class="deep-stale">${t('deepStale')}</div>` : ''}
+    <div class="deep-top"><span class="dot ${rl}"></span><div><h3>${esc(X.headline)}</h3><div class="muted small">${t('deepRisk')}: <b>${esc(t('risk_' + X.risk_level))}</b> · ${t('deepHorizon')}: ${esc(X.horizon)}</div></div></div>
+    <p class="deep-thesis">${esc(X.thesis)}</p>
+    <div class="deep-assets">${(X.assets || []).map(a => `<div class="da"><div class="da-h"><b>${esc(a.tk)}</b><span class="muted">${esc(a.name)}</span><span class="stance ${BIAS_C[a.bias] || 'warn'}">${esc(t('bias_' + a.bias))}${a.conviction ? ' ' + '●'.repeat(a.conviction) + '○'.repeat(3 - a.conviction) : ''}</span></div>
+      ${a.price ? `<div class="da-px">${typeof a.price === 'number' ? usd(a.price) : esc(a.price)}<span class="muted small"> ${t('deepAtTime')}</span></div>` : ''}
+      <div class="da-lv"><span>${t('support')}: ${lvl(a.support)}</span><span>${t('resistance')}: ${lvl(a.resistance)}</span></div>
+      <p>${esc(a.text)}</p>${a.invalidation ? `<div class="muted small">${t('invalid')}: ${esc(a.invalidation)}</div>` : ''}</div>`).join('')}</div>
+    <div class="deep-sc">${(X.scenarios || []).map(c => `<div class="dsc"><div class="dsc-h"><b>${esc(c.name)}</b><span>${Math.round(+c.prob || 0)}%</span></div><div class="dsc-bar"><i style="width:${Math.max(3, Math.min(100, +c.prob || 0))}%"></i></div><p>${esc(c.text)}</p></div>`).join('')}</div>
+    <div class="deep-secs">${(X.sections || []).map(c => `<details class="ds"${c.open ? ' open' : ''}><summary>${esc(c.h)}</summary><p>${esc(c.text)}</p></details>`).join('')}</div>
+    <div class="deep-cols"><div><h4>${t('deepRisks')}</h4><ul>${(X.risks || []).map(r => `<li>${esc(r)}</li>`).join('')}</ul></div><div><h4>${t('deepWatch')}</h4><ul>${(X.watch || []).map(r => `<li>${esc(r)}</li>`).join('')}</ul></div></div>
+    ${(D.sources || []).length ? `<div class="deep-src muted small">${t('sources')}: ${D.sources.slice(0, 8).map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(' · ')}</div>` : ''}
+    <div class="muted small deep-disc">${t('deepDisc')}</div>`;
 }
-function openClaude() { open('https://claude.ai/new?q=' + encodeURIComponent(claudePrompt()), '_blank', 'noopener'); }
+function openDeep() { goSection('deep'); }
+window.__finrad = {notify: (...a) => notify(...a), version: VERSION};
 async function loadLive(first) {
   try { let j = null;
     if (WORKER) { try { j = await getJSON(WORKER + '/live', 12000); } catch (e) { report('net', 'worker /live: ' + e.message); } }
@@ -1181,14 +1261,15 @@ function openPanel(id) { $$('.drawer').forEach(d => d.hidden = d.id !== id); $('
   if (id === 'settings') { renderAlerts(); renderSysBtn(); renderTg(); applyLayout(); loadSources(); } }
 function closePanels() { $$('.drawer').forEach(d => d.hidden = true); $('#scrim').hidden = true; }
 function fillSelects() {
-  const groups = [['c', t('crypto')], ['s', t('stocks')], ['p', t('perpsGrp')]];
+  const groups = [['c', t('crypto')], ['s', t('stocks')], ['m', t('metals')], ['p', t('perpsGrp')]];
   const opts = (list) => groups.map(([g, label]) => { const as = list.filter(a => a.g === g); return as.length ? `<optgroup label="${esc(label)}">` + as.map(a => `<option value="${a.id}">${esc(fullName(a))}</option>`).join('') + '</optgroup>' : ''; }).join('');
   const list = watchAssets(); if (!WATCH.includes(state.asset)) list.unshift(assetFor(state.asset));
   const html = opts(list), all = [...list, ...BASE_ASSETS.filter(a => !list.includes(a))];
   for (const s of ['#pf-asset', '#al-asset']) { const el = $(s), v = el.value; el.innerHTML = opts(all); if (v) el.value = v; }
   const grp = store.get('assetGrp', 'fav'); $$('#asset-grp button').forEach(b => b.classList.toggle('on', b.dataset.v === grp));
   const topCrypto = (state.mk || []).filter(c => !STABLE.has(c.symbol)).slice(0, 60).map(c => assetFor(c.symbol + '_USD'));
-  let pool = grp === 'fav' ? watchAssets() : grp === 'c' ? [...new Map([...BASE_ASSETS.filter(a => a.g === 'c'), ...watchAssets().filter(a => a.g === 'c'), ...topCrypto].map(a => [a.id, a])).values()] : [...new Map([...BASE_ASSETS.filter(a => a.g !== 'c'), ...watchAssets().filter(a => a.g !== 'c')].map(a => [a.id, a])).values()];
+  const inG = (a) => grp === 's' ? a.g === 's' || a.g === 'p' : a.g === grp;
+  let pool = grp === 'fav' ? watchAssets() : grp === 'c' ? [...new Map([...BASE_ASSETS.filter(a => a.g === 'c'), ...watchAssets().filter(a => a.g === 'c'), ...topCrypto].map(a => [a.id, a])).values()] : [...new Map([...BASE_ASSETS.filter(inG), ...EXTRA_ASSETS.filter(inG), ...watchAssets().filter(inG)].map(a => [a.id, a])).values()];
   if (!pool.length) pool = BASE_ASSETS.slice(0, 5);
   if (!pool.some(a => a.id === state.asset)) pool = [assetFor(state.asset), ...pool];
   $('#asset-select').innerHTML = grp === 'fav' ? `<optgroup label="★ ${esc(t('grpFav'))}">` + pool.map(a => `<option value="${a.id}">${esc(fullName(a))}</option>`).join('') + '</optgroup>' : opts(pool);
@@ -1199,7 +1280,7 @@ function fillSelects() {
 }
 const safe = (fn) => { try { fn(); } catch (e) { console.error('[FinRAD]', fn.name, e); report('render', e.message, fn.name); } };
 function renderAll() {
-  [applyI18n, applyLook, fillSelects, applyLayout, renderHero, renderBriefSections, renderWatch, renderPortfolio, renderFng, renderAuto, renderPulse,
+  [applyI18n, applyLook, fillSelects, applyLayout, renderHero, renderBriefSections, renderDeep, renderWatch, renderPortfolio, renderFng, renderAuto, renderPulse,
    renderChartHead, renderFeed, renderPerps, renderCal, renderMarkets, renderNotifs, renderAlerts, renderSysBtn, redrawChart, () => setStatus()].forEach(safe);
   $('#ver').textContent = 'v' + VERSION;
   $$('#lang-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === LANG)); $$('#cur-seg button').forEach(b => b.classList.toggle('on', b.dataset.v === CUR));
@@ -1224,7 +1305,9 @@ function goSection(k) {
   const sec = $(`[data-sec="${k}"]`); if (!sec) return;
   if (sec.hidden) { const L = getLayout(); const x = L.find(s => s.k === k); if (x) { x.on = true; store.set('layout', L); applyLayout(); } }
   if (sec.classList.contains('closed')) $('.head h2', sec).click();
-  const y = sec.getBoundingClientRect().top + scrollY - ($('.top').offsetHeight + 8); scrollTo({top: y, behavior: 'smooth'});
+  const y = Math.max(0, sec.getBoundingClientRect().top + scrollY - ($('.top').offsetHeight + 8)); scrollTo({top: y, behavior: 'smooth'});
+  setTimeout(() => { if (Math.abs(scrollY - y) > 40 && document.documentElement.scrollHeight - innerHeight > y - 40) scrollTo(0, y); }, 700);
+  sec.classList.add('flash'); setTimeout(() => sec.classList.remove('flash'), 1600);
 }
 function openFromLink(u) {
   let q; try { q = new URL(u, location.href).searchParams; } catch { return; }
@@ -1315,7 +1398,7 @@ function init() {
   $('#p-prices').addEventListener('change', e => { store.set('pPrices', e.target.checked); syncPush(); });
   $('#p-events').addEventListener('change', e => { store.set('pEvents', e.target.checked); syncPush(); });
   $('#push-test').addEventListener('click', async () => { const r = pushSub && await pushPost('/push/test', {endpoint: pushSub.endpoint}); notify('alert', t('notifications'), r && r.ok ? t('pushTestSent') : t('pushFail') + ' ' + ((r && (r.error || r.status)) || '')); });
-  $('#claude-btn').addEventListener('click', openClaude);
+  $('#claude-btn').addEventListener('click', openDeep);
   $('#collapse-all').addEventListener('click', () => collapseAll(true)); $('#expand-all').addEventListener('click', () => collapseAll(false));
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { const d = e.data || {}; if (d.type === 'open') openFromLink(d.url); if (d.type === 'push') loadLive(); if (d.type === 'resubscribe' && store.get('push', false)) pushOn(true); });
   $('#sound-tog').addEventListener('change', e => { store.set('sound', e.target.checked); if (e.target.checked) beep(); });

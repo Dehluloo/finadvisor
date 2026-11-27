@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=4.0.1">
+<link rel="stylesheet" href="style.css?v=4.1.0">
 </head>
 <body>
 <header class="top">
@@ -45,6 +45,11 @@
     <div class="pulse" id="pulse" title=""></div>
   </section>
 
+  <section class="card deep" id="sec-deep" data-sec="deep" data-collapse>
+    <div class="head"><h2><span aria-hidden="true" class="deep-star">✦</span> <span data-i18n="deepTitle">Глибокий аналіз Claude</span></h2><div class="chips" id="deep-meta"></div></div>
+    <div id="deep"></div>
+  </section>
+
   <section class="card since" id="sec-since" data-sec="since" hidden>
     <div class="head"><h2 class="noc"><span data-i18n="since">Поки вас не було</span> <span class="muted small" id="since-t"></span></h2><button class="icon-btn sm" id="since-x">✕</button></div>
     <div class="since-row" id="since-row"></div>
@@ -56,7 +61,7 @@
       <div class="price-line"><span class="big" id="chart-price"></span><span class="pill" id="chart-chg" hidden></span><span class="muted small" id="chart-hl"></span></div>
     </div>
     <div class="toolbar">
-      <div class="seg small" id="asset-grp"><button data-v="fav" class="on">★ <span data-i18n="grpFav">Мій список</span></button><button data-v="c" data-i18n="grpCrypto">Крипто</button><button data-v="s" data-i18n="grpStocks">Фонди й акції</button></div>
+      <div class="seg small" id="asset-grp"><button data-v="fav" class="on">★ <span data-i18n="grpFav">Мій список</span></button><button data-v="c" data-i18n="grpCrypto">Крипто</button><button data-v="s" data-i18n="grpStocks">Акції та фонди</button><button data-v="m" data-i18n="grpMetals">Метали</button></div>
       <select id="asset-select"></select>
       <div class="seg" id="tf-seg">
         <button data-tf="5m">5m</button><button data-tf="15m">15m</button><button data-tf="1h">1h</button><button data-tf="4h">4h</button>
@@ -260,7 +265,7 @@
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="tip" id="tip" hidden></div>
 <script src="data/brief.js"></script>
-<script src="i18n.js?v=4.0.1"></script>
-<script src="app.js?v=4.0.1"></script>
+<script src="i18n.js?v=4.1.0"></script>
+<script src="app.js?v=4.1.0"></script>
 </body>
 </html>

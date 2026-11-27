@@ -4,7 +4,7 @@ import { L } from './lists.js';
 import { sendPush, makeVapid } from './webpush.js';
 import { buildBrief } from './brief.js';
 
-const VERSION = '4.0.0';
+const VERSION = '4.1.0';
 const APP = 'https://dehluloo.github.io/finadvisor/';
 const GH_LIVE = 'https://raw.githubusercontent.com/Dehluloo/finadvisor/live/live.json';
 const GH_SOURCES = 'https://raw.githubusercontent.com/Dehluloo/finadvisor/main/data/sources.json';
@@ -139,14 +139,14 @@ async function collect(env, now) {
   const hourly = !M.fng || (now - M.fng.at > 55 * 60e3 && minute % 60 === 3);
   const pFng = hourly ? getJ('https://api.alternative.me/fng/?limit=60', 8000).then(j => (j.data || []).map(d => ({v: +d.value, t: +d.timestamp * 1000})).reverse()).catch(() => null) : null;
   const pDaily = hourly ? getJ('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=60', 8000).then(k => k.map(x => +x[4])).catch(() => null) : null;
-  const pTick = !M.tick || (now - M.tick.at > 14 * 60e3 && minute % 15 === 7) ? Promise.all([cdcTicker('SPYUSD-PERP').catch(() => null), cdcTicker('XAUUSD-PERP').catch(() => null)]) : null;
+  const pTick = !M.tick || (now - M.tick.at > 14 * 60e3 && minute % 15 === 7) ? Promise.all(['SPYUSD-PERP', 'QQQUSD-PERP', 'XAUUSD-PERP', 'XAGUSD-PERP'].map(i => cdcTicker(i).catch(() => null))) : null;
   const fresh = (await Promise.all(jobs)).flat();
   const [pp, cal, fng, daily, tick] = await Promise.all([pPerps, pCal, pFng, pDaily, pTick]);
   if (pp) meta.perps = {at: now, d: pp};
   if (cal) meta.cal = {at: now, d: cal};
   if (fng) meta.fng = {at: now, d: fng};
   if (daily) meta.daily = {at: now, d: {BTC: daily}};
-  if (tick) meta.tick = {at: now, d: {SPY: tick[0], XAU: tick[1]}};
+  if (tick) meta.tick = {at: now, d: {SPY: tick[0], QQQ: tick[1], XAU: tick[2], XAG: tick[3]}};
   // нові новини
   const cutoff = new Date(now - KEEP_MS).toISOString();
   const known = await db.prepare('SELECT id, norm FROM news WHERE ts >= ?').bind(cutoff).all();
@@ -166,7 +166,7 @@ async function collect(env, now) {
   meta.errors = {at: now, d: errors, added};
   writes.push(metaMany(db, meta));
   await db.batch(writes);
-  return {pp: pp || (M.perps && M.perps.d) || {}, cal: cal || (M.cal && M.cal.d) || [], fng: fng || (M.fng && M.fng.d) || [], daily: daily ? {BTC: daily} : (M.daily && M.daily.d) || {}, tick: tick ? {SPY: tick[0], XAU: tick[1]} : (M.tick && M.tick.d) || {}, briefAt: M.brief_at || 0, added, errors};
+  return {pp: pp || (M.perps && M.perps.d) || {}, cal: cal || (M.cal && M.cal.d) || [], fng: fng || (M.fng && M.fng.d) || [], daily: daily ? {BTC: daily} : (M.daily && M.daily.d) || {}, tick: tick ? {SPY: tick[0], QQQ: tick[1], XAU: tick[2], XAG: tick[3]} : (M.tick && M.tick.d) || {}, briefAt: M.brief_at || 0, added, errors};
 }
 // усі нові новини — одним SQL-запитом
 const insertNews = (db, rows) => db.prepare("INSERT OR IGNORE INTO news (id, norm, ts, ins, imp, tr, notified, j) SELECT json_extract(value, '$.id'), json_extract(value, '$.norm'), json_extract(value, '$.ts'), json_extract(value, '$.ins'), json_extract(value, '$.imp'), json_extract(value, '$.tr'), json_extract(value, '$.notified'), json_extract(value, '$.j') FROM json_each(?)").bind(JSON.stringify(rows));
@@ -180,7 +180,7 @@ async function seedFromGitHub(rows, seen, now) {
 }
 // переклад найсвіжіших неперекладених (ліміт запитів на хвилину)
 async function translateSome(db) {
-  const rows = (await db.prepare('SELECT id, j FROM news WHERE tr = 0 ORDER BY imp DESC, ts DESC LIMIT 3').all()).results;
+  const rows = (await db.prepare('SELECT id, j FROM news WHERE tr = 0 ORDER BY imp DESC, ts DESC LIMIT 6').all()).results;
   const ups = [];
   await Promise.all(rows.map(async r => {
     const it = JSON.parse(r.j); it.t = it.t || {};
