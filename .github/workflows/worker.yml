@@ -21,7 +21,6 @@ jobs:
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::Додайте секрет CLOUDFLARE_API_TOKEN"; exit 0; fi
           T=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | python3 -c "import re,sys; s=sys.stdin.read().strip(); s=re.sub(r'^(Bearer\s+)', '', s).strip().strip(chr(34)+chr(39)); m=re.findall(r'[A-Za-z0-9_.-]{30,}', s); print(max(m, key=len) if m else s)")
-          echo "raw len=${#CLOUDFLARE_API_TOKEN} clean len=${#T}"
           if printf '%s' "$T" | grep -qE '^[0-9a-f]{32}$'; then echo "::error::У секреті CLOUDFLARE_API_TOKEN лежить Account ID (32 символи), а не токен. Покладіть Account ID у CLOUDFLARE_ACCOUNT_ID, а в CLOUDFLARE_API_TOKEN — сам токен"; exit 1; fi
           echo "::add-mask::$T"; export CLOUDFLARE_API_TOKEN="$T"; echo "CLOUDFLARE_API_TOKEN=$T" >> $GITHUB_ENV
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
@@ -32,9 +31,6 @@ jobs:
             echo "::add-mask::$ACC"; echo "CLOUDFLARE_ACCOUNT_ID=$ACC" >> $GITHUB_ENV
           fi
           curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | python3 -c "import json,sys; d=json.load(sys.stdin); print('token verify:', d.get('success'), (d.get('result') or {}).get('status'), [e.get('message') for e in d.get('errors',[])])" || true
-          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/tokens/verify" | python3 -c "import json,sys; d=json.load(sys.stdin); print('account-token verify:', d.get('success'), (d.get('result') or {}).get('status'), [e.get('message') for e in d.get('errors',[])])" || true
-          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" | python3 -c "import json,sys; d=json.load(sys.stdin); print('workers list:', d.get('success'), [e.get('message') for e in d.get('errors',[])])" || true
-          echo "id len=${#CLOUDFLARE_ACCOUNT_ID} tok len=${#CLOUDFLARE_API_TOKEN}"
           echo "READY=1" >> $GITHUB_ENV
       - name: База D1
         if: env.READY == '1'
@@ -64,4 +60,4 @@ jobs:
           printf '{"worker":"%s"}\n' "$URL" > data/config.json
           git config user.name "finadvisor-bot"; git config user.email "actions@users.noreply.github.com"
           git add data/config.json
-          if ! git diff --cached --quiet; then git commit -m "Адреса Worker"; git pull --rebase origin main; git push; fi
+          if ! git diff --cached --quiet; then git commit -m "Адреса Worker"; git pull --rebase --autostash origin main; git push; fi
