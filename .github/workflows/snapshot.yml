@@ -1,0 +1,20 @@
+name: Знімок ринку для аналізу Claude
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: {group: snapshot, cancel-in-progress: false}
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Зібрати точні дані
+        run: python3 tools/snapshot.py
+      - name: Зберегти
+        run: |
+          git config --global user.name "finadvisor-bot"; git config --global user.email "actions@users.noreply.github.com"
+          git add data/snapshot.json && (git diff --cached --quiet || (git commit -q -m "Знімок ринку $(date -u +'%F %H:%M')" && git pull -q --rebase origin main && git push -q))
