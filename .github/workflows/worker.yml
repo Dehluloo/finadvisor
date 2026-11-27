@@ -23,6 +23,7 @@ jobs:
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=5" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result') or []; print(r[0]['id'] if r else '')")
             if [ -z "$ACC" ]; then ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/memberships" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result') or []; print(r[0]['account']['id'] if r else '')"); fi
+            if [ -z "$ACC" ]; then curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | python3 -c "import json,sys; d=json.load(sys.stdin); print('verify:', d.get('success'), (d.get('result') or {}).get('status'), [e.get('message') for e in d.get('errors',[])])"; curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts" | python3 -c "import json,sys; d=json.load(sys.stdin); print('accounts:', d.get('success'), len(d.get('result') or []), [e.get('message') for e in d.get('errors',[])])"; fi
             if [ -z "$ACC" ]; then echo "::error::Не вдалося визначити Account ID — додайте секрет CLOUDFLARE_ACCOUNT_ID"; exit 1; fi
             echo "::add-mask::$ACC"; echo "CLOUDFLARE_ACCOUNT_ID=$ACC" >> $GITHUB_ENV
           fi
