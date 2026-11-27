@@ -35,9 +35,15 @@ jobs:
         if: env.READY == '1'
         working-directory: worker
         run: |
-          ID=$(npx -y wrangler@3 d1 list --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(next((x['uuid'] for x in d if x['name']=='finrad'),''))")
-          if [ -z "$ID" ]; then npx -y wrangler@3 d1 create finrad; ID=$(npx -y wrangler@3 d1 list --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(next((x['uuid'] for x in d if x['name']=='finrad'),''))"); fi
-          sed -i "s/__D1_ID__/$ID/" wrangler.toml
+          q() { npx -y wrangler@3 d1 list --json 2>/dev/null | python3 -c "import json,sys
+          try: d=json.load(sys.stdin); print(next((x['uuid'] for x in d if x['name']=='finrad'),''))
+          except Exception: print('')"; }
+          ID=$(q); if [ -z "$ID" ]; then npx -y wrangler@3 d1 create finrad >/dev/null 2>&1 || true; ID=$(q); fi
+          if [ -n "$ID" ]; then sed -i "s/__D1_ID__/$ID/" wrangler.toml; echo "D1 ok"
+          else python3 - <<'PY'
+          import re; p='wrangler.toml'; s=open(p).read(); open(p,'w').write(re.sub(r'\n\[\[d1_databases\]\][\s\S]*$', '\n', s))
+          PY
+          echo "::warning::Токен без доступу до D1 — журнал помилок вимкнено, новини працюють. Додайте токену право Account → D1 → Edit"; fi
       - name: Розгортання
         if: env.READY == '1'
         working-directory: worker
