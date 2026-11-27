@@ -3,6 +3,13 @@ main = "src/index.js"
 compatibility_date = "2026-11-01"
 workers_dev = true
 
+# Збирач новин, сповіщення і бриф — щохвилини
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+WORKER_URL = "https://finrad.paulmeizy.workers.dev"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "finrad"

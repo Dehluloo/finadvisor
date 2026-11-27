@@ -63,6 +63,23 @@ uk: {
   sec_pulse:'Пульс ринку і бриф', sec_since:'Поки вас не було', sec_chart:'Графік', sec_watch:'Мій список', sec_markets:'Ринок криптовалют (як CoinMarketCap)', sec_bubbles:'Бульбашки ринку', sec_live:'Новини наживо',
   sec_fng:'Індекс страху', sec_auto:'Авто-сигнал', sec_liq:'Карта ліквідацій', sec_perps:"Ф'ючерси", sec_lights:'Світлофор ризику', sec_plain:'Простими словами', sec_news:'Головне від аналітика',
   sec_cal:'Календар', sec_outlook:'Прогноз', sec_weekly:'Огляд тижня', sec_portfolio:'Мій портфель', sec_tips:'Поради обережних інвесторів'
+,
+  // 4.0
+  briefAuto:'⚙︎ Автоматичний бриф', briefClaude:'✦ Аналіз Claude', askClaude:'Глибокий аналіз від Claude',
+  collapseAll:'Згорнути всі розділи', expandAll:'Розгорнути всі',
+  sysNotif:'Сповіщення на цьому пристрої', pPrices:'Сильні рухи цін (±5% за добу)', pEvents:'Нагадування про важливі події', pushTest:'Надіслати тестове сповіщення',
+  pushOnHelp:'Увімкнено. Новини, рухи цін і ваші цінові сповіщення приходитимуть, навіть коли FinRAD закритий.',
+  pushOffHelp:'Увімкніть, щоб отримувати сповіщення, навіть коли FinRAD закритий (система попросить дозвіл).',
+  pushIosHint:'На iPhone сповіщення працюють лише з іконки на головному екрані: Safari → Поділитися → «На початковий екран», відкрийте FinRAD з іконки й увімкніть тут.',
+  pushIosOld:'Потрібен iOS 16.4 або новіший і FinRAD, доданий на головний екран.',
+  pushBlockedIos:'Сповіщення заборонені. Дозвольте: Параметри → Сповіщення → FinRAD.',
+  pushFail:'Не вдалося увімкнути сповіщення.', pushOnToast:'Готово ✓ Сповіщення приходитимуть, навіть коли програма закрита.', pushTestSent:'Тестове сповіщення надіслано — воно з’явиться за кілька секунд.',
+  tgNotLinked:'Бот готовий — натисніть Start',
+  tg1:'У Telegram відкрийте @BotFather → /newbot → придумайте назву → скопіюйте токен.',
+  tg2:'На GitHub: Settings → Secrets and variables → Actions → New repository secret. Назва: TELEGRAM_BOT_TOKEN, значення — токен.',
+  tg2b:'Відкрийте Actions → «Cloudflare Worker» → Run workflow (одноразово, ~1 хв).',
+  tg3:'Відкрийте свого бота й натисніть «Start» — він одразу відповість. Керування: /on, /off, /important, /all, /prices, /events, /status.',
+  tgDeployBtn:'Запустити оновлення Worker',
 },
 en: {
   app:'FinRAD', refresh:'Refresh', notifications:'Notifications', settings:'Settings', chart:'Chart',
@@ -127,6 +144,23 @@ en: {
   sec_pulse:'Market pulse & brief', sec_since:'While you were away', sec_chart:'Chart', sec_watch:'Watchlist', sec_markets:'Crypto market (CoinMarketCap-style)', sec_bubbles:'Market bubbles', sec_live:'Live news',
   sec_fng:'Fear & Greed', sec_auto:'Auto signal', sec_liq:'Liquidation map', sec_perps:'Futures', sec_lights:'Risk traffic light', sec_plain:'In plain words', sec_news:"Analyst's key news",
   sec_cal:'Calendar', sec_outlook:'Outlook', sec_weekly:'Weekly review', sec_portfolio:'My portfolio', sec_tips:'Cautious-investor tips'
+,
+  // 4.0
+  briefAuto:'⚙︎ Automatic brief', briefClaude:'✦ Claude analysis', askClaude:'Deep analysis by Claude',
+  collapseAll:'Collapse all sections', expandAll:'Expand all',
+  sysNotif:'Notifications on this device', pPrices:'Big price moves (±5% in 24h)', pEvents:'Reminders about key events', pushTest:'Send a test notification',
+  pushOnHelp:'On. News, price moves and your price alerts arrive even when FinRAD is closed.',
+  pushOffHelp:'Turn on to get notifications even when FinRAD is closed (the system will ask for permission).',
+  pushIosHint:'On iPhone notifications work only from the Home Screen icon: Safari → Share → “Add to Home Screen”, open FinRAD from the icon and turn this on.',
+  pushIosOld:'Requires iOS 16.4 or later and FinRAD added to the Home Screen.',
+  pushBlockedIos:'Notifications are blocked. Allow them: Settings → Notifications → FinRAD.',
+  pushFail:'Could not turn on notifications.', pushOnToast:'Done ✓ Notifications will arrive even when the app is closed.', pushTestSent:'Test notification sent — it will appear in a few seconds.',
+  tgNotLinked:'Bot ready — press Start',
+  tg1:'In Telegram open @BotFather → /newbot → choose a name → copy the token.',
+  tg2:'On GitHub: Settings → Secrets and variables → Actions → New repository secret. Name: TELEGRAM_BOT_TOKEN, value: the token.',
+  tg2b:'Open Actions → “Cloudflare Worker” → Run workflow (once, ~1 min).',
+  tg3:'Open your bot and press “Start” — it replies right away. Commands: /on, /off, /important, /all, /prices, /events, /status.',
+  tgDeployBtn:'Run the Worker update',
 }};
 Object.assign(I18N.uk, {
   dragHint:'Перетягніть, щоб змінити місце розділу', tips_on:'Підказки для новачків (ⓘ)', help:'Що це?',

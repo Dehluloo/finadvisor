@@ -1,7 +1,6 @@
-name: Живі новини
+name: Живі новини (резерв, вручну)
+# З FinRAD 4 новини збирає Cloudflare Worker щохвилини. Цей запуск лишився як ручний резерв.
 on:
-  schedule:
-    - cron: '7 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
@@ -12,7 +11,7 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 62
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Гілка live (дані щохвилини, без перебудови сайту)
@@ -33,7 +32,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           LIVE_DIR: live-dir
         run: |
-          end=$(( $(date +%s) + 55*60 ))
+          end=$(( $(date +%s) + 5*60 ))
           while [ $(date +%s) -lt $end ]; do
             start=$(date +%s)
             git pull -q --ff-only origin main 2>/dev/null || true
@@ -41,8 +40,3 @@ jobs:
             (cd live-dir && git add -A && (git commit -q --amend -m "live $(date -u +%H:%M)" || true) && git push -q -f origin live) || echo "push failed"
             left=$(( 60 - ($(date +%s) - start) )); [ $left -gt 0 ] && sleep $left || true
           done
-      - name: Запустити наступну годину
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run live.yml --repo ${{ github.repository }} --ref main || gh api -X POST repos/${{ github.repository }}/actions/workflows/live.yml/dispatches -f ref=main || true

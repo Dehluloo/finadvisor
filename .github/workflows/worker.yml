@@ -13,6 +13,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,10 +42,7 @@ jobs:
           except Exception: print('')"; }
           ID=$(q); if [ -z "$ID" ]; then npx -y wrangler@3 d1 create finrad >/dev/null 2>&1 || true; ID=$(q); fi
           if [ -n "$ID" ]; then sed -i "s/__D1_ID__/$ID/" wrangler.toml; echo "D1 ok"
-          else python3 - <<'PY'
-          import re; p='wrangler.toml'; s=open(p).read(); open(p,'w').write(re.sub(r'\n\[\[d1_databases\]\][\s\S]*$', '\n', s))
-          PY
-          echo "::warning::Токен без доступу до D1 — журнал помилок вимкнено, новини працюють. Додайте токену право Account → D1 → Edit"; fi
+          else echo "::error::Токен без доступу до D1. FinRAD 4 зберігає новини й підписки в D1 — додайте токену право Account → D1 → Edit"; exit 1; fi
       - name: Розгортання
         if: env.READY == '1'
         working-directory: worker
@@ -52,6 +50,7 @@ jobs:
           npx -y wrangler@3 deploy 2>&1 | tee deploy.log
           KEY=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | sha256sum | cut -c1-32)
           printf '%s' "$KEY" | npx -y wrangler@3 secret put ADMIN_KEY
+          if [ -n "$TELEGRAM_BOT_TOKEN" ]; then printf '%s' "$TELEGRAM_BOT_TOKEN" | tr -d '[:space:]' | npx -y wrangler@3 secret put TELEGRAM_BOT_TOKEN && echo "Telegram-бот підключено"; else echo "::notice::Секрету TELEGRAM_BOT_TOKEN немає — Telegram вимкнено (push працює)"; fi
           URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "URL=$URL" >> $GITHUB_ENV
       - name: Повідомити програму адресу

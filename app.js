@@ -1,7 +1,7 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.7.0';
+const VERSION = '4.0.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
@@ -199,10 +199,39 @@ const ago = (ts) => { const m = Math.round((Date.now() - new Date(ts)) / 60000);
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 // ---------- мережа ----------
-async function getJSON(url, ms = 12000, opt = {}) {
-  const c = new AbortController(); const tm = setTimeout(() => c.abort(), ms);
-  try { const r = await fetch(url, Object.assign({signal:c.signal, cache:'no-store'}, opt)); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
-  finally { clearTimeout(tm); }
+// Не більше кількох одночасних запитів до кожної біржі (інакше вони тимчасово блокують), однакові запити — один раз.
+const HOST_MAX = {'api.crypto.com': 3, 'data-api.binance.vision': 4, 'www.okx.com': 3, 'api.hyperliquid.xyz': 3, 'api.coingecko.com': 2};
+const HOST_GAP = {'api.crypto.com': 110, 'data-api.binance.vision': 60, 'www.okx.com': 120, 'api.coingecko.com': 400}; // мс між стартами запитів
+const hostQ = {}, inflight = new Map(), coolUntil = {}, failRun = new Proxy({}, {get: (o, k) => o[k] || 0});
+async function slot(host) {
+  const max = HOST_MAX[host]; if (!max) return () => {};
+  const q = hostQ[host] || (hostQ[host] = {n: 0, w: [], last: 0});
+  if (q.n >= max) await new Promise(r => q.w.push(r));
+  q.n++;
+  const gap = HOST_GAP[host] || 0, wait = q.last + gap - Date.now(); q.last = Math.max(Date.now(), q.last + gap);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  let done = false; return () => { if (done) return; done = true; q.n--; const nx = q.w.shift(); if (nx) nx(); };
+}
+function getJSON(url, ms = 12000, opt = {}) {
+  const key = !opt.method || opt.method === 'GET' ? url : null;
+  if (key && inflight.has(key)) return inflight.get(key);
+  const run = (async () => {
+    let host = ''; try { host = new URL(url, location.href).host; } catch {}
+    if (coolUntil[host] > Date.now()) throw new Error('cooldown ' + host);
+    const release = await slot(host); const c = new AbortController(); const tm = setTimeout(() => c.abort(), ms);
+    try {
+      let r;
+      try { r = await fetch(url, Object.assign({signal: c.signal, cache: 'no-store'}, opt)); }
+      catch (e) { // біржа відмовила без CORS-заголовків (ліміт) — коротка пауза для цього хоста після кількох поспіль
+        if (HOST_MAX[host] && e.name !== 'AbortError' && navigator.onLine !== false && ++failRun[host] >= 3) { coolUntil[host] = Date.now() + 8e3; failRun[host] = 0; }
+        throw e; }
+      failRun[host] = 0;
+      if (r.status === 429) coolUntil[host] = Date.now() + 30e3;
+      if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
+    finally { clearTimeout(tm); release(); }
+  })();
+  if (key) { inflight.set(key, run); run.then(() => inflight.delete(key), () => inflight.delete(key)); }
+  return run;
 }
 const CDC = 'https://api.crypto.com/exchange/v1/public/';
 async function fetchTickers() {
@@ -356,7 +385,8 @@ function renderHero() {
   $('#hero-signal').textContent = b.signal || t('noBrief');
   $('#hero-summary').textContent = b.summary || '';
   $('#hero-date').textContent = b.date ? t('briefFrom') + ' ' + new Date(b.date + 'T12:00:00').toLocaleDateString(LOC(), {day:'numeric', month:'long'}) : t('dailyBrief');
-  $('#hero-chips').innerHTML = [b.regime && t('regime') + ': ' + b.regime, b.data_as_of && t('dataAsOf') + ': ' + b.data_as_of].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
+  const srcChip = state.brief.source === 'auto' ? t('briefAuto') : state.brief.source === 'claude' ? t('briefClaude') : '';
+  $('#hero-chips').innerHTML = [srcChip, b.regime && t('regime') + ': ' + b.regime, b.data_as_of && t('dataAsOf') + ': ' + b.data_as_of].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
 }
 function pulseParts() {
   const parts = [];
@@ -863,7 +893,7 @@ function renderFeed() {
   $('#feed').innerHTML = list.map(i => {
     const x = itemText(i), foreign = !sameLang(i);
     const toggle = x.tr ? `<button class="lnk" data-orig="${i.id}">${t('showOrig')}</button> <span class="muted small">· ${t('translated')}</span>` : x.canTr ? `<button class="lnk" data-orig="${i.id}">${t('showTr')}</button>` : foreign ? `<a class="lnk" href="${trUrl(i)}" target="_blank" rel="noopener">${t('showTr')} ↗</a>` : '';
-    return `<article class="fi${i.imp ? ' imp' : ''}${seen.has(i.id) ? '' : ' new'}">
+    return `<article class="fi${i.imp ? ' imp' : ''}${seen.has(i.id) ? '' : ' new'}" data-id="${esc(i.id)}">
       <div class="fi-h"><span class="tag ${i.sent}">${SENT(i.sent)}</span><span class="src">${esc(i.src)}</span><span class="cat">${esc(t('cat_' + i.cat))}</span>${i.assets && i.assets.length ? `<span class="as">${esc(i.assets.join(' · '))}</span>` : ''}<time>${ago(i.ts)}</time></div>
       <a class="fi-t" href="${esc(i.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>
       ${x.body ? `<div class="fi-b">${esc(x.body.slice(0, 240))}${x.body.length > 240 ? '…' : ''}</div>` : ''}
@@ -892,7 +922,7 @@ function notify(kind, head, text, url) {
   $('#toasts').prepend(el); while ($('#toasts').children.length > 3) $('#toasts').lastChild.remove();
   setTimeout(() => { if (el.isConnected) dismiss(0); }, 10000);
   beep();
-  if ('Notification' in window && Notification.permission === 'granted' && store.get('sysNotif', false)) { try { const sn = new Notification(head, {body: text, icon: 'icons/icon-192.png', tag: String(n.id)}); sn.onclick = () => { focus(); if (url) open(url, '_blank', 'noopener'); }; } catch {} }
+  if (!pushSub && 'Notification' in window && Notification.permission === 'granted' && store.get('sysNotif', false) && document.visibilityState !== 'visible') { try { const sn = new Notification(head, {body: text, icon: 'icons/icon-192.png', tag: String(n.id)}); sn.onclick = () => { focus(); if (url) open(url, '_blank', 'noopener'); }; } catch {} }
 }
 function checkNewsNotifs(fresh) {
   const mode = store.get('nmode', 'imp'), seen = new Set(store.get('seenFeed', [])), items = (fresh && fresh.items) || [];
@@ -905,25 +935,72 @@ function checkPriceAlerts() {
   const alerts = store.get('alerts', []); let changed = false;
   for (const a of alerts) { const k = state.tickers[a.id]; if (!k || a.done) continue;
     if ((a.op === '>' && k.last >= a.price) || (a.op === '<' && k.last <= a.price)) { a.done = true; changed = true; notify('alert', '🔔 ' + t('alertTitle'), `${fullName(assetFor(a.id))}: ${money(k.last)} (${a.op === '>' ? t('above') : t('below')} ${money(a.price)})`); } }
-  if (changed) { store.set('alerts', alerts); renderAlerts(); }
+  if (changed) { store.set('alerts', alerts); renderAlerts(); syncPush(); }
   const day = new Date().toISOString().slice(0, 10), moved = store.get('moved', {});
   for (const id of MOVERS) { const k = state.tickers[id]; if (!k || Math.abs(k.chg) < 5) continue; const key = id + ':' + day + ':' + (k.chg > 0 ? 'u' : 'd'); if (moved[key]) continue; moved[key] = 1;
     notify(k.chg > 0 ? 'Bullish' : 'Bearish', (k.chg > 0 ? '📈 ' : '📉 ') + t('moveTitle'), t('moveText', {a: assetFor(id).tk + ' ' + money(k.last), v: pct(k.chg)})); }
   for (const k in moved) if (!k.includes(day)) delete moved[k]; store.set('moved', moved);
 }
 function renderAlerts() { const al = store.get('alerts', []); $('#alert-list').innerHTML = al.map((a, i) => `<div class="al${a.done ? ' done' : ''}"><span>${esc(assetFor(a.id).tk)} ${a.op === '>' ? '≥' : '≤'} ${money(a.price)}</span>${a.done ? '<span class="muted small">✓</span>' : ''}<button class="x" data-i="${i}">×</button></div>`).join('') || `<div class="muted small">${t('noAlerts')}</div>`; $('#al-price').placeholder = SYM[CUR].trim(); }
+// Push: сповіщення приходять від сервера (Worker), навіть коли FinRAD закритий.
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const STANDALONE = matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;
+const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+// service worker готовий — або помилка через 10 с (щоб перемикач ніколи не завис)
+const swReady = () => Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error('service worker')), 10000))]);
+let pushSub = null, VAPID = store.get('vapid', '');
+const b64uBytes = (s) => { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+const pushPrefs = () => ({mode: store.get('nmode', 'imp'), prices: store.get('pPrices', true), events: store.get('pEvents', true), lang: LANG, alerts: store.get('alerts', [])});
+async function pushInit() {
+  if (!pushOK() || !WORKER) return;
+  try { const c = await getJSON(WORKER + '/config', 8000); if (c && c.vapid) { VAPID = c.vapid; store.set('vapid', VAPID); state.cfg = c; } } catch {}
+  try { const reg = await swReady(); pushSub = await reg.pushManager.getSubscription(); } catch {}
+  if (pushSub) {
+    // ключ сервера змінився — переписатися
+    const key = pushSub.options && pushSub.options.applicationServerKey; let same = true;
+    if (key && VAPID) { const a = new Uint8Array(key), b = b64uBytes(VAPID); same = a.length === b.length && a.every((x, i) => x === b[i]); }
+    if (!same) { try { await pushSub.unsubscribe(); } catch {} pushSub = null; if (store.get('push', false)) await pushOn(true); }
+    else { await pushPost('/push/subscribe', {sub: pushSub.toJSON(), prefs: pushPrefs()}); syncDoneAlerts(); }
+  }
+  renderSysBtn();
+}
+async function pushPost(path, body) { try { const r = await fetch(WORKER + path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); return await r.json(); } catch (e) { report('push', path + ': ' + e.message); return null; } }
+async function pushOn(silent) {
+  if (!pushOK()) return false;
+  if (IOS && !STANDALONE) { if (!silent) notify('alert', t('notifications'), t('pushIosHint')); return false; }
+  const p = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  if (p !== 'granted') { store.set('push', false); renderSysBtn(); return false; }
+  try {
+    if (!VAPID) { const c = await getJSON(WORKER + '/config', 8000); VAPID = c.vapid; store.set('vapid', VAPID); }
+    const reg = await swReady();
+    pushSub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64uBytes(VAPID)});
+    const r = await pushPost('/push/subscribe', {sub: pushSub.toJSON(), prefs: pushPrefs()});
+    store.set('push', !!(r && r.ok)); renderSysBtn(); return !!(r && r.ok);
+  } catch (e) { report('push', 'subscribe: ' + e.message); store.set('push', false); renderSysBtn(); if (!silent) notify('alert', t('notifications'), t('pushFail') + ' ' + e.message); return false; }
+}
+async function pushOff() { if (pushSub) { await pushPost('/push/unsubscribe', {endpoint: pushSub.endpoint}); try { await pushSub.unsubscribe(); } catch {} } pushSub = null; store.set('push', false); renderSysBtn(); }
+let prefsT = 0;
+function syncPush() { if (!pushSub) return; clearTimeout(prefsT); prefsT = setTimeout(() => pushPost('/push/prefs', {endpoint: pushSub.endpoint, prefs: pushPrefs()}), 600); }
+async function syncDoneAlerts() {
+  if (!pushSub) return; const r = await pushPost('/push/state', {endpoint: pushSub.endpoint}); if (!r || !r.prefs) return;
+  const srv = r.prefs.alerts || [], al = store.get('alerts', []); let ch = false;
+  for (const a of al) { const s = srv.find(x => x.id === a.id && x.op === a.op && Math.abs(x.price - a.price) < 1e-9); if (s && s.done && !a.done) { a.done = true; ch = true; } }
+  if (ch) { store.set('alerts', al); renderAlerts(); }
+}
 function renderSysBtn() {
-  const tg = $('#sys-notif'), st = $('#sys-notif-st');
-  if (!('Notification' in window)) { tg.checked = false; tg.disabled = true; st.textContent = t('unsupported'); return; }
-  if (Notification.permission === 'denied') { tg.checked = false; tg.disabled = true; st.textContent = t('blockedHelp'); return; }
-  tg.disabled = false; tg.checked = Notification.permission === 'granted' && store.get('sysNotif', false); st.textContent = tg.checked ? t('sysOnHelp') : t('sysOffHelp');
+  const tg = $('#sys-notif'), st = $('#sys-notif-st'), test = $('#push-test');
+  if (test) test.hidden = !pushSub;
+  if (!pushOK()) { tg.checked = false; tg.disabled = true; st.textContent = IOS ? t('pushIosOld') : t('unsupported'); return; }
+  if (Notification.permission === 'denied') { tg.checked = false; tg.disabled = true; st.textContent = IOS ? t('pushBlockedIos') : t('blockedHelp'); return; }
+  tg.disabled = false; tg.checked = !!pushSub;
+  st.textContent = pushSub ? t('pushOnHelp') : IOS && !STANDALONE ? t('pushIosHint') : t('pushOffHelp');
 }
 async function renderTg() {
-  let s = null; try { s = await getJSON(LIVE + 'tg.json?t=' + Date.now(), 8000); } catch { try { s = await getJSON(BASE + 'data/tg.json?t=' + Date.now(), 8000); } catch {} }
-  const st = !s || !s.configured ? ['off', t('tgOff')] : s.enabled ? ['on', t('tgOn')] : ['pause', t('tgPaused')];
-  $('#tg').innerHTML = `<div class="set-row"><span class="tg-st ${st[0]}">● ${esc(st[1])}</span>${s && s.bot ? `<a class="btn small primary" href="https://t.me/${esc(s.bot)}" target="_blank" rel="noopener">${t('tgOpen')} @${esc(s.bot)}</a>` : ''}</div>
-    ${s && s.last ? `<div class="muted small">${t('tgLast')}: ${ago(s.last)}</div>` : ''}
-    ${!s || !s.configured || !s.chat ? `<div class="tg-steps"><b>${t('tgSteps')}</b><ol><li>${esc(t('tg1'))}</li><li>${esc(t('tg2'))}</li><li>${esc(t('tg3'))}</li></ol><a class="btn small" href="${REPO}/settings/secrets/actions/new" target="_blank" rel="noopener">${t('tgSecretBtn')} ↗</a></div>` : `<div class="muted small">/on · /off · /important · /all · /prices · /events · /status</div>`}`;
+  let s = null; if (WORKER) { try { const c = await getJSON(WORKER + '/config', 8000); s = c && c.tg; state.cfg = c; } catch {} }
+  const st = !s || !s.configured ? ['off', t('tgOff')] : !s.linked ? ['pause', t('tgNotLinked')] : s.enabled ? ['on', t('tgOn')] : ['pause', t('tgPaused')];
+  $('#tg').innerHTML = `<div class="set-row"><span class="tg-st ${st[0]}">● ${esc(st[1])}</span>${s && s.bot ? `<a class="btn small primary" href="https://t.me/${esc(s.bot)}?start=finrad" target="_blank" rel="noopener">${t('tgOpen')} @${esc(s.bot)}</a>` : ''}</div>
+    ${!s || !s.configured ? `<div class="tg-steps"><b>${t('tgSteps')}</b><ol><li>${esc(t('tg1'))}</li><li>${esc(t('tg2'))}</li><li>${esc(t('tg2b'))}</li><li>${esc(t('tg3'))}</li></ol><a class="btn small" href="${REPO}/settings/secrets/actions/new" target="_blank" rel="noopener">${t('tgSecretBtn')} ↗</a> <a class="btn small ghost" href="${REPO}/actions/workflows/worker.yml" target="_blank" rel="noopener">${t('tgDeployBtn')} ↗</a></div>`
+      : !s.linked ? `<div class="muted small">${esc(t('tg3'))}</div>` : `<div class="muted small">/on · /off · /important · /all · /prices · /events · /status</div>`}`;
 }
 
 // ---------- анонімні звіти (помилки й використання) ----------
@@ -1036,12 +1113,33 @@ function setStatus(txt) {
   if (!state.tickAt) { $('#status').textContent = t('noPrices'); return; }
   $('#status').textContent = (fresh ? t('live') + ' · ' : '') + t('updated') + ' ' + hhmm(new Date(state.tickAt)) + (navigator.onLine === false ? ' · ' + t('offline') : '');
 }
+// Бриф: автоматичний (Worker, щопівгодини, за правилами) або аналіз Claude, якщо він свіжіший за добу.
 async function loadBrief() {
   try { const j = await getJSON(BASE + 'data/brief.json?t=' + Date.now(), 10000); if (j && j.brief) state.briefUk = j; } catch {}
-  state.brief = state.briefUk;
-  if (LANG === 'en') { try { let j; try { j = await getJSON(LIVE + 'brief_en.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/brief_en.json?t=' + Date.now(), 10000); } const a = (state.briefUk.brief || [])[0], b = (j.brief || [])[0]; if (j && b && (!a || a.date === b.date)) state.brief = j; } catch {} }
+  let auto = null;
+  if (WORKER) { try { const j = await getJSON(WORKER + '/brief?lang=' + LANG, 10000); if (j && j.brief) { auto = j; store.set('autoBrief:' + LANG, j); } } catch { auto = store.get('autoBrief:' + LANG, null); } }
+  const F = state.briefUk, claudeAt = F && F.source === 'claude' && F.generated ? Date.parse(F.generated) : 0;
+  let pick = F;
+  if (LANG === 'en' && F) { try { let j; try { j = await getJSON(LIVE + 'brief_en.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/brief_en.json?t=' + Date.now(), 10000); } const a = (F.brief || [])[0], b = (j.brief || [])[0]; if (j && b && (!a || a.date === b.date)) pick = j; } catch {} }
+  if (auto && !(claudeAt && Date.now() - claudeAt < 24 * 3600e3)) pick = auto;
+  state.brief = Object.assign({}, pick, {hist: (F && F.hist) || pick.hist});
   renderHero(); renderBriefSections();
 }
+// Глибокий аналіз від Claude: відкриває Claude з готовим запитом і свіжими даними з програми
+function claudePrompt() {
+  const P = (state.live && state.live.perps) || {}, f = state.fng && state.fng.length ? state.fng.at(-1).v : null;
+  const px = watchAssets().slice(0, 12).map(a => { const k = state.tickers[a.id]; return k ? `${a.tk} ${k.last} (${k.chg >= 0 ? '+' : ''}${(+k.chg).toFixed(2)}% 24h)` : null; }).filter(Boolean).join('; ');
+  const fund = ['BTC', 'ETH'].filter(k => P[k]).map(k => `${k} ${(P[k].funding_h * 800).toFixed(4)}%/8h, OI $${Math.round(P[k].oi_usd / 1e6)}M`).join('; ');
+  const news = ((state.live && state.live.items) || []).filter(i => i.imp).slice(0, 12).map(i => `- [${i.sent}] ${i.src}: ${itemText(i).title}`).join('\n');
+  const now = new Date(), ev = buildEvents(now, new Date(+now + 14 * 864e5)).filter(e => e.imp === 'High').slice(0, 8).map(e => `- ${e.ts.toISOString().slice(0, 16).replace('T', ' ')} UTC ${e.title}`).join('\n');
+  const L = LANG === 'en';
+  const head = L ? 'You are my cautious financial analyst for the FinRAD app. Using the fresh data below (and a web search for anything important from the last 24 hours), give a deep market analysis in simple English: overall signal and risk level, crypto / US stocks / gold / cash outlook, what drives the market now, key risks, upcoming events, and what cautious investors usually do in such a period. Not personal advice.'
+    : 'Ти мій обережний фінансовий аналітик для програми FinRAD. На основі свіжих даних нижче (і пошуку в інтернеті важливого за останні 24 години) зроби глибокий аналіз ринку простою українською: загальний сигнал і рівень ризику, прогноз по крипті / акціях США / золоту / кешу, що зараз рухає ринок, головні ризики, найближчі події і що зазвичай роблять обережні інвестори в такий період. Це не індивідуальна порада.';
+  const tail = L ? 'If you have access to the GitHub repository dehluloo/finadvisor, also update data/brief.json in the same format with "source": "claude" and "generated" (ISO time) so FinRAD shows your analysis.'
+    : 'Якщо маєш доступ до GitHub-репозиторію dehluloo/finadvisor, онови також data/brief.json у тому ж форматі з полями "source": "claude" і "generated" (час ISO), щоб FinRAD показав твій аналіз.';
+  return `${head}\n\n${L ? 'Data' : 'Дані'} (${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC):\n${L ? 'Prices' : 'Ціни'}: ${px}\n${L ? 'Fear & Greed' : 'Індекс страху й жадібності'}: ${f ?? '—'}/100\n${L ? 'Funding/OI' : 'Фандинг/OI'}: ${fund || '—'}\n${L ? 'Important news' : 'Важливі новини'}:\n${news || '—'}\n${L ? 'Events' : 'Події'}:\n${ev || '—'}\n\n${tail}`.slice(0, 6000);
+}
+function openClaude() { open('https://claude.ai/new?q=' + encodeURIComponent(claudePrompt()), '_blank', 'noopener'); }
 async function loadLive(first) {
   try { let j = null;
     if (WORKER) { try { j = await getJSON(WORKER + '/live', 12000); } catch (e) { report('net', 'worker /live: ' + e.message); } }
@@ -1122,6 +1220,25 @@ function initCollapse() {
 }
 const seg = (sel, fn) => $(sel).addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !$(sel).contains(b)) return; $$(sel + ' button').forEach(x => x.classList.toggle('on', x === b)); fn(b); });
 
+function goSection(k) {
+  const sec = $(`[data-sec="${k}"]`); if (!sec) return;
+  if (sec.hidden) { const L = getLayout(); const x = L.find(s => s.k === k); if (x) { x.on = true; store.set('layout', L); applyLayout(); } }
+  if (sec.classList.contains('closed')) $('.head h2', sec).click();
+  const y = sec.getBoundingClientRect().top + scrollY - ($('.top').offsetHeight + 8); scrollTo({top: y, behavior: 'smooth'});
+}
+function openFromLink(u) {
+  let q; try { q = new URL(u, location.href).searchParams; } catch { return; }
+  const n = q.get('n'), g = q.get('go');
+  if (n) { state.liveCat = 'all'; state.liveSent = 'all'; state.feedN = Math.max(state.feedN, 40); $$('#live-cat button').forEach(b => b.classList.toggle('on', b.dataset.c === 'all')); $$('#live-sent button').forEach(b => b.classList.toggle('on', b.dataset.s === 'all')); renderFeed();
+    goSection('live'); setTimeout(() => { const el = $(`#feed [data-id="${n}"]`); if (el) { el.classList.add('hl'); el.scrollIntoView({behavior: 'smooth', block: 'center'}); setTimeout(() => el.classList.remove('hl'), 4000); } }, 500); }
+  else if (g) goSection(g);
+  if (n || g) history.replaceState(null, '', location.pathname);
+}
+function collapseAll(close) {
+  const s = store.get('collapsed', {});
+  $$('[data-collapse]').forEach(sec => { sec.classList.toggle('closed', close); const h = $('.head h2', sec); if (h) h.setAttribute('aria-expanded', String(!close)); s[sec.id] = close; });
+  store.set('collapsed', s); if (!close) { balanceAll(); redrawChart(); renderBubbles(); loadLiq(); }
+}
 function init() {
   if (!WATCH.length) WATCH = BASE_ASSETS.map(a => a.id);
   if (!TF[state.tf]) state.tf = '1h';
@@ -1185,7 +1302,7 @@ function init() {
   $('#scrim').addEventListener('click', closePanels); $$('[data-close]').forEach(b => b.addEventListener('click', closePanels));
   addEventListener('keydown', e => { if (e.key === 'Escape') closePanels(); });
   $('#notif-clear').addEventListener('click', () => { notifs = []; store.set('notifs', notifs); renderNotifs(); updateBadge(); });
-  seg('#lang-seg', b => { LANG = b.dataset.v; store.set('lang', LANG); renderAll(); loadBrief(); renderTg(); });
+  seg('#lang-seg', b => { LANG = b.dataset.v; store.set('lang', LANG); renderAll(); loadBrief(); renderTg(); syncPush(); });
   seg('#cur-seg', b => { CUR = b.dataset.v; store.set('cur', CUR); loadRates().then(() => { renderAll(); loadLiq(); }); });
   seg('#theme-seg', b => { store.set('theme', b.dataset.v); applyLook(); redrawChart(); });
   seg('#dens-seg', b => { store.set('density', b.dataset.v); applyLook(); });
@@ -1193,23 +1310,29 @@ function init() {
   $('#layout-list').addEventListener('change', e => { const k = e.target.dataset.lk; if (!k) return; const L = getLayout(); L.find(s => s.k === k).on = e.target.checked; store.set('layout', L); applyLayout(); if (e.target.checked) { if (k === 'bubbles') renderBubbles(); if (k === 'liq') loadLiq(); if (k === 'chart') redrawChart(); } });
   $('#layout-list').addEventListener('click', e => { const b = e.target.closest('[data-mv]'); if (!b) return; const L = getLayout(), i = +b.dataset.mv, j = i + +b.dataset.d; if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; store.set('layout', L); applyLayout(); });
   $('#layout-reset').addEventListener('click', () => { store.set('layout', null); applyLayout(); renderBubbles(); loadLiq(); redrawChart(); });
-  seg('#nmode-seg', b => store.set('nmode', b.dataset.v));
+  seg('#nmode-seg', b => { store.set('nmode', b.dataset.v); syncPush(); });
+  $('#p-prices').checked = store.get('pPrices', true); $('#p-events').checked = store.get('pEvents', true);
+  $('#p-prices').addEventListener('change', e => { store.set('pPrices', e.target.checked); syncPush(); });
+  $('#p-events').addEventListener('change', e => { store.set('pEvents', e.target.checked); syncPush(); });
+  $('#push-test').addEventListener('click', async () => { const r = pushSub && await pushPost('/push/test', {endpoint: pushSub.endpoint}); notify('alert', t('notifications'), r && r.ok ? t('pushTestSent') : t('pushFail') + ' ' + ((r && (r.error || r.status)) || '')); });
+  $('#claude-btn').addEventListener('click', openClaude);
+  $('#collapse-all').addEventListener('click', () => collapseAll(true)); $('#expand-all').addEventListener('click', () => collapseAll(false));
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { const d = e.data || {}; if (d.type === 'open') openFromLink(d.url); if (d.type === 'push') loadLive(); if (d.type === 'resubscribe' && store.get('push', false)) pushOn(true); });
   $('#sound-tog').addEventListener('change', e => { store.set('sound', e.target.checked); if (e.target.checked) beep(); });
   $('#sys-notif').addEventListener('change', async (e) => {
-    if (!('Notification' in window)) return;
-    if (!e.target.checked) { store.set('sysNotif', false); renderSysBtn(); return; }
-    const p = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission(); store.set('sysNotif', p === 'granted'); renderSysBtn();
-    if (p === 'granted') notify('alert', t('notifications'), t('enabled') + ' ✓');
+    if (!e.target.checked) { await pushOff(); return; }
+    e.target.disabled = true; const ok = await pushOn(false); e.target.disabled = false;
+    if (ok) notify('alert', t('notifications'), t('pushOnToast'));
   });
-  $('#alert-form').addEventListener('submit', e => { e.preventDefault(); const price = parseFloat($('#al-price').value) / rate(); if (!(price > 0)) return; const al = store.get('alerts', []); al.push({id: $('#al-asset').value, op: $('#al-op').value, price, done: false}); store.set('alerts', al); $('#al-price').value = ''; renderAlerts(); });
-  $('#alert-list').addEventListener('click', e => { const b = e.target.closest('.x'); if (!b) return; const al = store.get('alerts', []); al.splice(+b.dataset.i, 1); store.set('alerts', al); renderAlerts(); });
+  $('#alert-form').addEventListener('submit', e => { e.preventDefault(); const price = parseFloat($('#al-price').value) / rate(); if (!(price > 0)) return; const al = store.get('alerts', []); al.push({id: $('#al-asset').value, op: $('#al-op').value, price, done: false}); store.set('alerts', al); $('#al-price').value = ''; renderAlerts(); syncPush(); });
+  $('#alert-list').addEventListener('click', e => { const b = e.target.closest('.x'); if (!b) return; const al = store.get('alerts', []); al.splice(+b.dataset.i, 1); store.set('alerts', al); renderAlerts(); syncPush(); });
   $('#pf-form').addEventListener('submit', e => { e.preventDefault(); const amt = parseFloat($('#pf-amount').value); if (!(amt > 0)) return; const rows = pfGet(), id = $('#pf-asset').value, ex = rows.find(r => r.id === id); if (ex) ex.amount += amt; else rows.push({id, amount: amt}); store.set('portfolio', rows); $('#pf-amount').value = ''; renderPortfolio(); });
   $('#pf-rows').addEventListener('click', e => { const b = e.target.closest('.x'); if (!b) return; const rows = pfGet(); rows.splice(+b.dataset.i, 1); store.set('portfolio', rows); renderPortfolio(); });
   document.addEventListener('animationend', e => e.target.classList && e.target.classList.remove('flash-up', 'flash-dn'));
   initCollapse(); renderAll(); updateBadge();
   let rz, lw = innerWidth; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (Math.abs(innerWidth - lw) < 20) return; lw = innerWidth; redrawChart(); renderBubbles(); loadLiq(); renderWatch(); balanceAll(); }, 200); });
 
-  loadConfig().then(() => refreshAll()).then(() => { loadLive(true); wsConnect(); dailyPing(); });
+  loadConfig().then(() => { pushInit(); return refreshAll(); }).then(() => { loadLive(true); wsConnect(); dailyPing(); openFromLink(location.href); });
   setInterval(() => flushReports(), 5 * 60e3); addEventListener('pagehide', () => flushReports());
   setInterval(() => { if (WORKER && document.visibilityState === 'visible') loadLive(); }, 30e3);
   const tel = $('#tel-tog'); tel.checked = store.get('telemetry', true); tel.addEventListener('change', () => store.set('telemetry', tel.checked));
@@ -1224,9 +1347,9 @@ function init() {
   setInterval(() => { renderFeed(); setStatus(); }, 60e3);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveSnap(); else { tick(); loadLive(); if (Date.now() - state.last >= T_FULL) refreshAll(); } });
   addEventListener('pagehide', saveSnap);
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js?v=' + VERSION).catch(() => {});
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register('sw.js?v=' + VERSION).catch(e => report('sw', e.message));
   const checkVersion = async () => { try { const j = await getJSON(BASE + 'version.json?t=' + Date.now(), 8000); if (j && j.v && j.v !== VERSION && location.protocol.startsWith('http')) { notify('alert', 'FinRAD ' + j.v, t('updating')); setTimeout(() => location.reload(), 2500); } } catch {} };
-  setTimeout(checkVersion, 5000); setInterval(checkVersion, 3 * 60e3);
+  setTimeout(checkVersion, 5000); setInterval(checkVersion, 3 * 60e3); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
 }
 init();
 })();

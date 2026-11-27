@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="style.css?v=3.7.0">
+<link rel="stylesheet" href="style.css?v=4.0.0">
 </head>
 <body>
 <header class="top">
@@ -40,6 +40,7 @@
       <h1 id="hero-signal">—</h1>
       <p id="hero-summary" class="lead"></p>
       <div class="chips" id="hero-chips"></div>
+      <button class="btn claude-btn" id="claude-btn" type="button"><span aria-hidden="true">✦</span> <span data-i18n="askClaude">Глибокий аналіз від Claude</span></button>
     </div>
     <div class="pulse" id="pulse" title=""></div>
   </section>
@@ -210,13 +211,17 @@
 
     <h3 class="group" data-i18n="layout">Що показувати на головній</h3>
     <p class="muted small" data-i18n="layoutNote"></p>
+    <div class="row-g" style="margin-bottom:10px"><button class="btn small ghost" id="collapse-all" type="button" data-i18n="collapseAll">Згорнути всі розділи</button><button class="btn small ghost" id="expand-all" type="button" data-i18n="expandAll">Розгорнути всі</button></div>
     <div class="layout-list" id="layout-list"></div>
     <button class="btn small ghost" id="layout-reset" data-i18n="reset">Скинути</button>
 
     <h3 class="group" data-i18n="notifications">Сповіщення</h3>
     <div class="set-row"><span data-i18n="notifyWhat">Сповіщати про новини</span><div class="seg small" id="nmode-seg"><button data-v="imp" data-i18n="important">Важливі</button><button data-v="all" data-i18n="all">Усі</button><button data-v="off" data-i18n="off">Вимк.</button></div></div>
-    <div class="set-row"><span data-i18n="sysNotif">Системні сповіщення</span><label class="switch"><input type="checkbox" id="sys-notif"><i></i></label></div>
+    <div class="set-row"><span data-i18n="sysNotif">Сповіщення на цьому пристрої</span><label class="switch"><input type="checkbox" id="sys-notif"><i></i></label></div>
     <div class="muted small" id="sys-notif-st" style="margin-top:-8px"></div>
+    <div class="set-row"><span data-i18n="pPrices">Сильні рухи цін (±5% за добу)</span><label class="switch"><input type="checkbox" id="p-prices"><i></i></label></div>
+    <div class="set-row"><span data-i18n="pEvents">Нагадування про важливі події</span><label class="switch"><input type="checkbox" id="p-events"><i></i></label></div>
+    <button class="btn small ghost" id="push-test" type="button" hidden data-i18n="pushTest">Надіслати тестове сповіщення</button>
     <div class="set-row"><span data-i18n="sound">Звук</span><label class="switch"><input type="checkbox" id="sound-tog"><i></i></label></div>
     <h3 class="group" data-i18n="priceAlerts">Цінові сповіщення</h3>
     <form class="alert-form" id="alert-form"><select id="al-asset"></select><select id="al-op"><option value=">" data-i18n="above">вище</option><option value="<" data-i18n="below">нижче</option></select><input id="al-price" type="number" step="any" min="0" required><button class="btn primary small" type="submit" data-i18n="add">Додати</button></form>
@@ -255,7 +260,7 @@
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="tip" id="tip" hidden></div>
 <script src="data/brief.js"></script>
-<script src="i18n.js?v=3.7.0"></script>
-<script src="app.js?v=3.7.0"></script>
+<script src="i18n.js?v=4.0.0"></script>
+<script src="app.js?v=4.0.0"></script>
 </body>
 </html>
