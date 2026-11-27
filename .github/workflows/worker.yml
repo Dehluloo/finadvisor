@@ -19,7 +19,13 @@ jobs:
         with: {node-version: 20}
       - name: Перевірка ключів
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::warning::Додайте секрети CLOUDFLARE_API_TOKEN і CLOUDFLARE_ACCOUNT_ID"; exit 0; fi
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::Додайте секрет CLOUDFLARE_API_TOKEN"; exit 0; fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts?per_page=5" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result') or []; print(r[0]['id'] if r else '')")
+            if [ -z "$ACC" ]; then ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/memberships" | python3 -c "import json,sys; d=json.load(sys.stdin); r=d.get('result') or []; print(r[0]['account']['id'] if r else '')"); fi
+            if [ -z "$ACC" ]; then echo "::error::Не вдалося визначити Account ID — додайте секрет CLOUDFLARE_ACCOUNT_ID"; exit 1; fi
+            echo "::add-mask::$ACC"; echo "CLOUDFLARE_ACCOUNT_ID=$ACC" >> $GITHUB_ENV
+          fi
           echo "READY=1" >> $GITHUB_ENV
       - name: База D1
         if: env.READY == '1'
