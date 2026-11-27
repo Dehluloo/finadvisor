@@ -1,11 +1,12 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.5.0';
+const VERSION = '3.6.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
 const LIVE = 'https://raw.githubusercontent.com/Dehluloo/finadvisor/live/';
+let WORKER = (JSON.parse(localStorage.getItem('fa:worker') || '""')) || '';
 const T_TICK = 15e3, T_LIVE = 60e3, T_BRIEF = 30 * 60e3, T_FULL = 4 * 3600e3, T_CHART = 60e3, T_MK = 5 * 60e3, T_LIQ = 5 * 60e3;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -887,6 +888,31 @@ async function renderTg() {
     ${!s || !s.configured || !s.chat ? `<div class="tg-steps"><b>${t('tgSteps')}</b><ol><li>${esc(t('tg1'))}</li><li>${esc(t('tg2'))}</li><li>${esc(t('tg3'))}</li></ol><a class="btn small" href="${REPO}/settings/secrets/actions/new" target="_blank" rel="noopener">${t('tgSecretBtn')} ↗</a></div>` : `<div class="muted small">/on · /off · /important · /all · /prices · /events · /status</div>`}`;
 }
 
+// ---------- анонімні звіти (помилки й використання) ----------
+const DEVICE = store.get('device', null) || (() => { const id = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)); store.set('device', id); return id; })();
+const repQ = []; const repSeen = new Set();
+function report(kind, msg, src, extra) {
+  if (!store.get('telemetry', true)) return;
+  const key = kind + '|' + msg + '|' + (src || ''); if (repSeen.has(key)) return; repSeen.add(key);
+  repQ.push({kind, msg: String(msg || '').slice(0, 500), src: String(src || '').slice(0, 200), extra});
+}
+async function flushReports(force) {
+  if (!WORKER || !store.get('telemetry', true) || (!repQ.length && !force)) return;
+  const events = repQ.splice(0, 20);
+  try { await fetch(WORKER + '/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({device: DEVICE, v: VERSION, lang: LANG, ua: navigator.userAgent, events}), keepalive: true}); }
+  catch { repQ.unshift(...events); }
+}
+function dailyPing() {
+  const day = new Date().toISOString().slice(0, 10); if (store.get('pingDay', '') === day) return;
+  store.set('pingDay', day);
+  report('ping', 'daily', '', {lang: LANG, cur: CUR, theme: store.get('theme', 'auto'), standalone: matchMedia('(display-mode: standalone)').matches || !!navigator.standalone,
+    width: innerWidth, sections: getLayout().filter(x => x.on).map(x => x.k), watch: WATCH.length, tz: Intl.DateTimeFormat().resolvedOptions().timeZone});
+  flushReports(true);
+}
+addEventListener('error', e => report('error', e.message, (e.filename || '').split('/').pop() + ':' + e.lineno));
+addEventListener('unhandledrejection', e => report('promise', (e.reason && (e.reason.message || String(e.reason))) || 'unknown'));
+async function loadConfig() { try { const c = await getJSON(BASE + 'data/config.json?t=' + Math.floor(Date.now() / 6e5), 8000); if (c && typeof c.worker === 'string') { WORKER = c.worker.replace(/\/$/, ''); localStorage.setItem('fa:worker', JSON.stringify(WORKER)); } } catch {} }
+
 // ---------- джерела новин ----------
 const DEF_RSS = ['CoinDesk', 'Cointelegraph', 'Decrypt', 'The Block', 'CNBC', 'CNBC Economy', 'CNBC Finance', 'MarketWatch', 'Federal Reserve'];
 const DEF_TG = ['WatcherGuru', 'cryptocurrency_media', 'Capitalizator_UA', 'tstamarkets_ua', 'trade_ultra'];
@@ -979,7 +1005,9 @@ async function loadBrief() {
   renderHero(); renderBriefSections();
 }
 async function loadLive(first) {
-  try { let j; try { j = await getJSON(LIVE + 'live.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/live.json?t=' + Date.now(), 10000); }
+  try { let j = null;
+    if (WORKER) { try { j = await getJSON(WORKER + '/live', 12000); } catch (e) { report('net', 'worker /live: ' + e.message); } }
+    if (!j || !j.items) { try { j = await getJSON(LIVE + 'live.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/live.json?t=' + Date.now(), 10000); } }
     if (state.live && j && j.updated && state.live.updated && j.updated < state.live.updated) j = state.live;
     if (j && j.items) { if (!state.live || state.live.updated !== j.updated || first) checkNewsNotifs(j); state.live = j; store.set('live', j); } } catch {}
   renderFeed(); renderPerps(); renderCal(); renderPulse();
@@ -1033,7 +1061,7 @@ function fillSelects() {
   const coins = [...new Set(['BTC', 'ETH', 'SOL', 'HYPE', 'XRP', 'DOGE', ...watchAssets().filter(a => a.g === 'c').map(a => a.tk)])];
   $('#liq-coin').innerHTML = coins.map(c => `<option>${c}</option>`).join(''); $('#liq-coin').value = state.liqCoin;
 }
-const safe = (fn) => { try { fn(); } catch (e) { console.error('[FinRAD]', fn.name, e); } };
+const safe = (fn) => { try { fn(); } catch (e) { console.error('[FinRAD]', fn.name, e); report('render', e.message, fn.name); } };
 function renderAll() {
   [applyI18n, applyLook, fillSelects, applyLayout, renderHero, renderBriefSections, renderWatch, renderPortfolio, renderFng, renderAuto, renderPulse,
    renderChartHead, renderFeed, renderPerps, renderCal, renderMarkets, renderNotifs, renderAlerts, renderSysBtn, redrawChart, () => setStatus()].forEach(safe);
@@ -1142,7 +1170,10 @@ function init() {
   initCollapse(); renderAll(); updateBadge();
   let rz, lw = innerWidth; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (Math.abs(innerWidth - lw) < 20) return; lw = innerWidth; redrawChart(); renderBubbles(); loadLiq(); renderWatch(); balanceAll(); }, 200); });
 
-  refreshAll().then(() => { loadLive(true); wsConnect(); });
+  loadConfig().then(() => refreshAll()).then(() => { loadLive(true); wsConnect(); dailyPing(); });
+  setInterval(() => flushReports(), 5 * 60e3); addEventListener('pagehide', () => flushReports());
+  setInterval(() => { if (WORKER && document.visibilityState === 'visible') loadLive(); }, 30e3);
+  const tel = $('#tel-tog'); tel.checked = store.get('telemetry', true); tel.addEventListener('change', () => store.set('telemetry', tel.checked));
   setInterval(tick, T_TICK);
   setInterval(() => { if (document.visibilityState === 'visible' && TF[state.tf].intra) loadChart(true); }, T_CHART);
   setInterval(() => loadLive(), T_LIVE);

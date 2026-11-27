@@ -90,6 +90,26 @@ def classify(text):
     return sent, cat, assets, important
 
 
+AD_WORDS = ['sponsored', 'promo code', 'promocode', 'use code', 'discount code', '% discount', '% off', 'black friday', 'blackfriday', 'cyber monday', 'giveaway',
+            'sign up', 'signup', 'register now', 'join now', 'join us', 'subscribe to', 'referral', 'ref link', 'limited time', 'last day of', 'free bonus', 'free spins',
+            'casino', 'claim now', 'presale', 'pre-sale', 'whitelist spot', 'premium channel', 'paid group', 'signals group', 'copy trading', 'webinar',
+            'advertisement', 'advertising', '#ad ', '(ad)', 'grab ', 'buy now', 'order now', 'merch', 'deal ends', 'only today', 'dm me', 'contact me', 'link in bio',
+            'реклама', 'партнерськ', 'партнерка', 'промокод', 'знижк', 'скидк', 'розіграш', 'розыгрыш', 'подписывайтесь', 'подпишись', 'підписуйтесь', 'підписуйся',
+            'переходь за', 'переходи по', 'реєструйся', 'регистрируйся', 'вебінар', 'вебинар', 'закритий канал', 'закрытый канал', 'vip-канал', 'vip канал',
+            'копитрейд', 'конкурс', 'пиши в лс', 'пишіть в лс', 'пишите в лс']
+AD_LINK = re.compile(r't\.me/\+|t\.me/joinchat|bit\.ly|linktr\.ee|utm_|/ref/|ref=|referral|invite', re.I)
+
+
+def is_ad(title, body='', url=''):
+    t = (' ' + (title or '') + ' ' + (body or '') + ' ').lower()
+    if any(w in t for w in AD_WORDS):
+        return True
+    if AD_LINK.search((title or '') + ' ' + (body or '')):
+        return True
+    letters = re.sub(r'[\W\d_]+', '', title or '')
+    return len(letters) < 12
+
+
 def item(source, kind, title, url, ts, body=''):
     text = (title + ' ' + body)
     sent, cat, assets, imp = classify(text)
@@ -136,7 +156,7 @@ def rss(name, url):
         d = parse_date(e.findtext('pubDate') or e.findtext('a:updated', namespaces=ns) or e.findtext('a:published', namespaces=ns)
                        or e.findtext('{http://purl.org/dc/elements/1.1/}date'))
         desc = clean(e.findtext('description') or e.findtext('a:summary', namespaces=ns) or '')
-        if title and d:
+        if title and d and not is_ad(title, desc):
             out.append(item(name, 'news', title, link.strip(), d, desc[:300]))
     return out
 
@@ -157,7 +177,7 @@ def telegram(ch):
         title = lines[0][:220]
         body = ' '.join(lines[1:])[:400]
         d = parse_date(m_time.group(1))
-        if d:
+        if d and not is_ad(title, body) and not AD_LINK.search(m_text.group(1)):
             out.append(item('Telegram · ' + ch, 'telegram', title, 'https://t.me/' + m_post.group(1), d, body))
     return out[-20:]
 
@@ -315,7 +335,7 @@ def main():
     for it in items + prev.get('items', []):
         key = it['id']
         norm = re.sub(r'\W+', '', it['title'].lower())[:80]
-        if key in seen or norm in seen:
+        if key in seen or norm in seen or is_ad(it['title'], it.get('body', '')):
             continue
         if parse_date(it['ts']) and parse_date(it['ts']) < cutoff:
             continue

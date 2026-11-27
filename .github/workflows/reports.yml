@@ -1,0 +1,26 @@
+name: Звіти про помилки
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Завантажити анонімні звіти з Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          [ -f data/config.json ] || { echo "Worker ще не налаштований"; exit 0; }
+          URL=$(python3 -c "import json;print(json.load(open('data/config.json')).get('worker',''))")
+          [ -n "$URL" ] && [ -n "$CLOUDFLARE_API_TOKEN" ] || exit 0
+          KEY=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | sha256sum | cut -c1-32)
+          curl -sf "$URL/logs?key=$KEY&days=35" -o /tmp/report.json || exit 0
+          git config --global user.name "finadvisor-bot"; git config --global user.email "actions@users.noreply.github.com"
+          mkdir -p reports && cp /tmp/report.json reports/latest.json && cp /tmp/report.json "reports/$(date -u +%Y-%m-%d).json"
+          ls -1t reports/20*.json | tail -n +40 | xargs -r git rm -q --ignore-unmatch
+          git add reports && (git diff --cached --quiet || (git commit -q -m "Звіт $(date -u +%F)" && git pull -q --rebase origin main && git push -q))
