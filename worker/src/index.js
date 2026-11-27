@@ -316,6 +316,7 @@ async function liveGet(env) {
   if (liveMem && Date.now() - liveMem.at < 15e3) return liveMem.body;
   let r = await env.DB.prepare("SELECT v FROM meta WHERE k = 'live'").first();
   if (!r) { await buildLiveSnap(env.DB); r = await env.DB.prepare("SELECT v FROM meta WHERE k = 'live'").first(); }
+  if (!r || r.v.includes('"items":[],')) { try { return await get(GH_LIVE, 9000); } catch { return r ? r.v : '{"items":[]}'; } }
   liveMem = {at: Date.now(), body: r.v}; return r.v;
 }
 async function subUpsert(req, env) {
@@ -333,22 +334,36 @@ function sanitizePrefs(p) {
 }
 async function subByEndpoint(env, ep) { return env.DB.prepare('SELECT * FROM subs WHERE endpoint = ?').bind(ep || '').first(); }
 
-export default {
-  async scheduled(ev, env, ctx) {
-    const now = Date.now();
-    await initDb(env.DB);
+async function runCycle(env, ctx) {
+  const now = Date.now();
     const c = await collect(env, now);
     await translateSome(env.DB).catch(e => console.error('translate', e.message));
     await notifyAll(env, c, now).catch(e => console.error('notify', e.message));
     await buildLiveSnap(env.DB).catch(e => console.error('snap', e.message));
     await maybeBrief(env, c, now).catch(e => console.error('brief', e.message));
     ctx.waitUntil(tgEnsureHook(env).catch(() => {}));
+}
+// Самозапуск: якщо cron ще не працював (після першого розгортання розклад вмикається до 15 хв) — зібрати з запиту програми.
+let bootAt = 0;
+async function bootIfIdle(env, ctx) {
+  if (Date.now() - bootAt < 50e3) return; bootAt = Date.now();
+  const m = await metaGet(env.DB, ['errors', 'boot']);
+  if ((m.errors && Date.now() - m.errors.at < 3 * 60e3) || (m.boot && Date.now() - m.boot < 50e3)) return;
+  await metaSet(env.DB, 'boot', Date.now()).run();
+  ctx.waitUntil(runCycle(env, ctx).catch(e => console.error('boot', e.message)));
+}
+
+export default {
+  async scheduled(ev, env, ctx) {
+    await initDb(env.DB);
+    await runCycle(env, ctx);
   },
   async fetch(req, env, ctx) {
     const url = new URL(req.url), p = url.pathname;
     if (req.method === 'OPTIONS') return new Response(null, {headers: CORS});
     try {
       await initDb(env.DB);
+      if (p === '/live' || p === '/health' || p === '/config') await bootIfIdle(env, ctx);
       if (p === '/live') return new Response(await liveGet(env), {headers: Object.assign({'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'max-age=15'}, CORS)});
       if (p === '/brief') { const k = url.searchParams.get('lang') === 'en' ? 'brief_en' : 'brief_uk'; const m = await metaGet(env.DB, [k]); return m[k] ? json(m[k], 200, {'Cache-Control': 'max-age=60'}) : json({error: 'not ready'}, 404); }
       if (p === '/config') { const [v, m] = await Promise.all([vapidOf(env), metaGet(env.DB, ['tg', 'errors'])]); const tg = m.tg || {};

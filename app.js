@@ -1143,7 +1143,7 @@ function openClaude() { open('https://claude.ai/new?q=' + encodeURIComponent(cla
 async function loadLive(first) {
   try { let j = null;
     if (WORKER) { try { j = await getJSON(WORKER + '/live', 12000); } catch (e) { report('net', 'worker /live: ' + e.message); } }
-    if (!j || !j.items) { try { j = await getJSON(LIVE + 'live.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/live.json?t=' + Date.now(), 10000); } }
+    if (!j || !j.items || !j.items.length) { try { j = await getJSON(LIVE + 'live.json?t=' + Date.now(), 10000); } catch { j = await getJSON(BASE + 'data/live.json?t=' + Date.now(), 10000); } }
     if (state.live && j && j.updated && state.live.updated && j.updated < state.live.updated) j = state.live;
     if (j && j.items) { if (!state.live || state.live.updated !== j.updated || first) checkNewsNotifs(j); state.live = j; store.set('live', j); } } catch {}
   renderFeed(); renderPerps(); renderCal(); renderPulse();
