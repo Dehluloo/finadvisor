@@ -20,7 +20,8 @@ jobs:
       - name: Перевірка ключів
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::Додайте секрет CLOUDFLARE_API_TOKEN"; exit 0; fi
-          T=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | python3 -c "import re,sys; s=sys.stdin.read(); m=re.findall(r'[A-Za-z0-9_-]{40}', s); print(m[-1] if m else s.strip().strip('\"').replace('Bearer ',''))")
+          T=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | python3 -c "import re,sys; s=sys.stdin.read().strip(); s=re.sub(r'^(Bearer\s+)', '', s).strip().strip(chr(34)+chr(39)); m=re.findall(r'[A-Za-z0-9_.-]{30,}', s); print(max(m, key=len) if m else s)")
+          echo "raw len=${#CLOUDFLARE_API_TOKEN} clean len=${#T}"
           if printf '%s' "$T" | grep -qE '^[0-9a-f]{32}$'; then echo "::error::У секреті CLOUDFLARE_API_TOKEN лежить Account ID (32 символи), а не токен. Покладіть Account ID у CLOUDFLARE_ACCOUNT_ID, а в CLOUDFLARE_API_TOKEN — сам токен"; exit 1; fi
           echo "::add-mask::$T"; export CLOUDFLARE_API_TOKEN="$T"; echo "CLOUDFLARE_API_TOKEN=$T" >> $GITHUB_ENV
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
