@@ -1,7 +1,7 @@
 /* Фінансовий радник 3.0 — автономний застосунок без залежностей і без токенів ШІ. */
 (() => {
 'use strict';
-const VERSION = '3.6.0';
+const VERSION = '3.7.0';
 const HOSTED = 'https://dehluloo.github.io/finadvisor/';
 const REPO = 'https://github.com/Dehluloo/finadvisor';
 const BASE = location.protocol.startsWith('http') ? '' : HOSTED;
@@ -46,16 +46,22 @@ function showHelp(btn) {
   const r = btn.getBoundingClientRect(), w = Math.min(340, innerWidth - 24);
   pop.style.width = w + 'px'; pop.style.left = clamp(r.left - w / 2, 12, innerWidth - w - 12) + 'px'; pop.style.top = (r.bottom + scrollY + 8) + 'px';
 }
+let dragJustEnded = 0;
 function initDrag() {
-  let drag = null, raf = 0, lastY = 0;
+  let drag = null, raf = 0, lastY = 0, press = null;
   const main = $('#main');
-  const scrollLoop = () => { if (!drag) return; if (lastY < 70) scrollBy(0, -14); else if (lastY > innerHeight - 70) scrollBy(0, 14); raf = requestAnimationFrame(scrollLoop); };
+  const scrollLoop = () => { if (!drag) return; if (lastY < 90) scrollBy(0, -12); else if (lastY > innerHeight - 110) scrollBy(0, 12); raf = requestAnimationFrame(scrollLoop); };
+  const start = (sec, e) => { drag = sec; sec.classList.add('dragging'); document.body.classList.add('is-dragging'); lastY = e.clientY; raf = requestAnimationFrame(scrollLoop); try { navigator.vibrate && navigator.vibrate(12); } catch {} };
+  const interactive = (t) => t.closest('button:not(.drag-h),select,input,a,label,textarea,.seg,.row-g,details,.chart,.bubbles,.liq,.tbl-wrap,.feed,.m-g,.picker');
   main.addEventListener('pointerdown', e => {
-    const hnd = e.target.closest('.drag-h'); if (!hnd) return;
-    e.preventDefault(); const sec = hnd.parentElement; drag = sec; sec.classList.add('dragging'); document.body.classList.add('is-dragging');
-    try { hnd.setPointerCapture(e.pointerId); } catch {} lastY = e.clientY; raf = requestAnimationFrame(scrollLoop);
+    const hnd = e.target.closest('.drag-h');
+    if (hnd) { e.preventDefault(); start(hnd.parentElement, e); try { hnd.setPointerCapture(e.pointerId); } catch {} return; }
+    const head = e.target.closest('[data-sec] > .head, [data-sec] .hero-body'); if (!head || interactive(e.target)) return;
+    const sec = head.closest('[data-sec]');
+    press = {x: e.clientX, y: e.clientY, sec, id: e.pointerId, timer: setTimeout(() => { if (press) { start(press.sec, e); press = null; } }, 420)};
   });
   main.addEventListener('pointermove', e => {
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) { clearTimeout(press.timer); press = null; }
     if (!drag) return; lastY = e.clientY;
     const el = document.elementFromPoint(e.clientX, e.clientY), over = el && el.closest('[data-sec]');
     if (!over || over === drag || over.parentElement !== main) return;
@@ -63,15 +69,41 @@ function initDrag() {
     const before = half ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2;
     main.insertBefore(drag, before ? over : over.nextSibling);
   });
+  document.addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, {passive: false});
+  document.addEventListener('contextmenu', e => { if (drag || press) e.preventDefault(); });
   const end = () => {
+    if (press) { clearTimeout(press.timer); press = null; }
     if (!drag) return; drag.classList.remove('dragging'); document.body.classList.remove('is-dragging'); cancelAnimationFrame(raf);
     const on = Object.fromEntries(getLayout().map(s => [s.k, s.on]));
     store.set('layout', $$('#main > [data-sec]').map(el => ({k: el.dataset.sec, on: on[el.dataset.sec] !== false}))); pairHalves();
-    drag = null; redrawChart(); renderBubbles(); loadLiq();
+    drag = null; dragJustEnded = Date.now(); redrawChart(); renderBubbles(); loadLiq();
   };
-  main.addEventListener('pointerup', end); main.addEventListener('pointercancel', end);
+  addEventListener('pointerup', end); addEventListener('pointercancel', end);
 }
 
+// ---------- мобільний режим: нижнє меню, потягнути для оновлення, свайп панелей ----------
+function initMobile() {
+  const bar = $('#tabbar');
+  bar.addEventListener('click', e => {
+    const b = e.target.closest('[data-go]'); if (!b) return; const k = b.dataset.go;
+    if (k === 'settings') { openPanel('settings'); return; }
+    if (k === 'top') { scrollTo({top: 0, behavior: 'smooth'}); return; }
+    const sec = $(`[data-sec="${k}"]`); if (!sec) return;
+    if (sec.hidden) { const L = getLayout(); const x = L.find(s => s.k === k); if (x) { x.on = true; store.set('layout', L); applyLayout(); } }
+    if (sec.classList.contains('closed')) $('.head h2', sec).click();
+    const y = sec.getBoundingClientRect().top + scrollY - ($('.top').offsetHeight + 8); scrollTo({top: y, behavior: 'smooth'}); setTimeout(() => { if (Math.abs(scrollY - y) > 40) scrollTo(0, y); }, 700);
+  });
+  const marks = ['top', 'chart', 'markets', 'live', 'cal'];
+  const onScroll = () => { let act = 'top'; for (const k of marks.slice(1)) { const s = $(`[data-sec="${k}"]`); if (s && !s.hidden && s.getBoundingClientRect().top < innerHeight * 0.4) act = k; } $$('#tabbar [data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === act)); };
+  addEventListener('scroll', () => requestAnimationFrame(onScroll), {passive: true}); onScroll();
+  // потягнути вниз для оновлення
+  const ptr = $('#ptr'); let y0 = null, pulled = 0;
+  addEventListener('touchstart', e => { y0 = scrollY <= 0 && !document.body.classList.contains('is-dragging') && $('#scrim').hidden ? e.touches[0].clientY : null; pulled = 0; }, {passive: true});
+  addEventListener('touchmove', e => { if (y0 == null) return; pulled = Math.max(0, e.touches[0].clientY - y0); if (pulled > 5) { ptr.style.transform = `translate(-50%, ${Math.min(pulled, 110) - 50}px)`; ptr.classList.toggle('ready', pulled > 80); ptr.hidden = false; } }, {passive: true});
+  addEventListener('touchend', () => { if (y0 == null) return; y0 = null; if (pulled > 80) { ptr.classList.add('spin'); refreshAll().finally(() => { ptr.classList.remove('spin', 'ready'); ptr.hidden = true; ptr.style.transform = ''; }); } else { ptr.hidden = true; ptr.style.transform = ''; } }, {passive: true});
+  // свайп праворуч закриває панелі
+  $$('.drawer').forEach(d => { let sx = null; d.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive: true}); d.addEventListener('touchmove', e => { if (sx == null) return; const dx = e.touches[0].clientX - sx; if (dx > 0) d.style.transform = `translateX(${dx}px)`; }, {passive: true}); d.addEventListener('touchend', e => { if (sx == null) return; const dx = (e.changedTouches[0].clientX - sx); sx = null; d.style.transform = ''; if (dx > 90) closePanels(); }, {passive: true}); });
+}
 // ---------- вигляд ----------
 const ACCENTS = ['#5b8cff', '#22c55e', '#a78bfa', '#f59e0b', '#ec4899', '#06b6d4'];
 function applyLook() {
@@ -242,7 +274,7 @@ function drawChart(el, all, show, intra, cmpRows) {
   const panes = compareMode ? 0 : (I.rsi ? 1 : 0) + (I.macd ? 1 : 0);
   const W = el.clientWidth || 600, baseH = innerWidth < 600 ? 280 : 340, H = baseH + panes * 92;
   el.style.height = '';
-  const padL = 6, padR = 66, padT = 10, padB = 22, iw = W - padL - padR, gap = 8, paneH = 84;
+  const sampleLbl = compareMode ? '+100,0%' : moneyAxis(Math.max(...all.map(r => r.h))), padL = 6, padR = Math.max(66, Math.round(sampleLbl.length * 6.6 + 14)), padT = 10, padB = 22, iw = W - padL - padR, gap = 8, paneH = 84;
   const mainH = H - padT - padB - panes * (paneH + gap);
   const step = iw / rows.length, bw = Math.max(1, Math.min(14, step * 0.68)), x = (i) => padL + step * i + step / 2;
   const P = [];
@@ -849,10 +881,16 @@ function beep() { if (!store.get('sound', false)) return; try { audioCtx = audio
 function notify(kind, head, text, url) {
   const n = {id: Date.now() + Math.random(), kind, head, text, url, ts: new Date().toISOString(), read: false};
   notifs.unshift(n); notifs = notifs.slice(0, 60); store.set('notifs', notifs); updateBadge(); if (!$('#drawer').hidden) renderNotifs();
-  const el = document.createElement('div'); el.className = 'toast ' + kind; el.innerHTML = `<div class="toast-h">${esc(head)}</div><div>${esc(text)}</div>`;
-  el.addEventListener('click', () => { if (url) open(url, '_blank', 'noopener'); el.remove(); });
+  const el = document.createElement('div'); el.className = 'toast ' + kind; el.innerHTML = `<button class="toast-x" aria-label="${t('close')}">✕</button><div class="toast-h">${esc(head)}</div><div>${esc(text)}</div>`;
+  const dismiss = (dir = 0) => { el.style.transition = 'transform .25s, opacity .25s'; el.style.transform = `translateX(${dir * 120}%)`; el.style.opacity = '0'; setTimeout(() => el.remove(), 260); };
+  let sx = null, dx = 0, sy = 0;
+  el.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; dx = 0; el.style.transition = 'none'; try { el.setPointerCapture(e.pointerId); } catch {} });
+  el.addEventListener('pointermove', e => { if (sx == null) return; dx = e.clientX - sx; const dy = e.clientY - sy; if (Math.abs(dy) > Math.abs(dx) && dy < -20) { dismiss(0); sx = null; return; } el.style.transform = `translateX(${dx}px)`; el.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / 220)); });
+  el.addEventListener('pointerup', e => { if (sx == null) return; sx = null; if (Math.abs(dx) > 70) { dismiss(Math.sign(dx)); return; } el.style.transition = 'transform .2s, opacity .2s'; el.style.transform = ''; el.style.opacity = '';
+    if (Math.abs(dx) < 6) { if (e.target.closest('.toast-x')) dismiss(1); else { if (url) open(url, '_blank', 'noopener'); dismiss(0); } } });
+  el.addEventListener('pointercancel', () => { sx = null; el.style.transform = ''; el.style.opacity = ''; });
   $('#toasts').prepend(el); while ($('#toasts').children.length > 3) $('#toasts').lastChild.remove();
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 9000);
+  setTimeout(() => { if (el.isConnected) dismiss(0); }, 10000);
   beep();
   if ('Notification' in window && Notification.permission === 'granted' && store.get('sysNotif', false)) { try { const sn = new Notification(head, {body: text, icon: 'icons/icon-192.png', tag: String(n.id)}); sn.onclick = () => { focus(); if (url) open(url, '_blank', 'noopener'); }; } catch {} }
 }
@@ -1078,7 +1116,8 @@ function initCollapse() {
     h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', String(!closed));
     const flip = () => { const c = !sec.classList.contains('closed'); sec.classList.toggle('closed', c); h.setAttribute('aria-expanded', String(!c)); const s = store.get('collapsed', {}); s[sec.id] = c; store.set('collapsed', s);
       if (!c) { balanceAll(); if (sec.id === 'sec-chart') redrawChart(); if (sec.id === 'sec-watch') renderWatch(); if (sec.id === 'sec-bubbles') loadBubbles(); if (sec.id === 'sec-liq') loadLiq(); } };
-    h.addEventListener('click', flip); h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+    h.parentElement.addEventListener('click', e => { if (Date.now() - dragJustEnded < 250) return; if (e.target.closest('button:not(.info),select,input,a,label,.seg,.row-g,details') && !e.target.closest('h2')) return; if (e.target.closest('.info')) return; flip(); });
+    h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
   });
 }
 const seg = (sel, fn) => $(sel).addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !$(sel).contains(b)) return; $$(sel + ' button').forEach(x => x.classList.toggle('on', x === b)); fn(b); });
@@ -1129,7 +1168,7 @@ function init() {
   $('#tips-tog').addEventListener('change', e => { store.set('tips', e.target.checked); applyLook(); });
   $('#bubbles').addEventListener('mousemove', bubbleTip); $('#bubbles').addEventListener('mouseleave', hideTip);
   $('#bubbles').addEventListener('click', e => { const g = e.target.closest('.bub'); if (g) openSym(g.dataset.sym); });
-  initDrag();
+  initDrag(); initMobile();
   $('#src-form').addEventListener('submit', e => { e.preventDefault(); const p = parseSource($('#src-in').value); if (!p) { $('#src-status').textContent = t('srcBad'); return; }
     if (p.kind === 'tg') { if (!DEF_TG.includes(p.name) && !(srcCfg.telegram || []).includes(p.name)) srcCfg.telegram = [...(srcCfg.telegram || []), p.name]; }
     else if (!(srcCfg.rss || []).some(r => r.url === p.url)) srcCfg.rss = [...(srcCfg.rss || []), {name: p.name, url: p.url}];

@@ -475,3 +475,31 @@ th.r,td.r{text-align:right}
 
 .chart{height:auto!important;min-height:0}
 .chart svg{display:block;width:100%;height:auto}
+
+/* 3.7 — мобільний додаток */
+html{-webkit-tap-highlight-color:transparent}
+body{overscroll-behavior-y:none}
+[data-sec] > .head,[data-sec] .hero-body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+[data-collapse] > .head{cursor:pointer}
+.dragging{transform:scale(1.015);transition:transform .15s}
+.toast{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none;padding-right:34px}
+.toast-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border:0;border-radius:50%;background:var(--card2);color:var(--muted);cursor:pointer;font-size:12px}
+.tabbar{display:none}
+.ptr{position:fixed;top:0;left:50%;z-index:25;transform:translate(-50%,-50px);width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--line);box-shadow:0 6px 18px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.ptr.ready{color:var(--accent)} .ptr.spin svg{animation:spin 1s linear infinite}
+@media (max-width:700px){
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:35;background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--muted);font-size:10.5px;font-weight:600;padding:4px 0;cursor:pointer}
+  .tabbar svg{width:23px;height:23px}
+  .tabbar button.on{color:var(--accent)}
+  body{padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+  .top .actions #settings-btn,.top .actions #refresh{display:none}
+  .toasts{top:calc(64px + env(safe-area-inset-top));bottom:auto;right:10px;left:10px;width:auto}
+  .wrap{padding:10px 10px 24px;gap:10px}
+  .card{border-radius:14px;padding:12px 13px}
+  .seg button{padding:7px 10px;min-height:32px}
+  .head h2{font-size:16.5px}
+  .drawer{width:100vw;border-left:0}
+  .drag-h{opacity:.35}
+  .foot{padding-bottom:8px}
+}
