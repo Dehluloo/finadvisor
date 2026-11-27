@@ -30,6 +30,10 @@ jobs:
             if [ -z "$ACC" ]; then echo "::error::Не вдалося визначити Account ID — додайте секрет CLOUDFLARE_ACCOUNT_ID"; exit 1; fi
             echo "::add-mask::$ACC"; echo "CLOUDFLARE_ACCOUNT_ID=$ACC" >> $GITHUB_ENV
           fi
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | python3 -c "import json,sys; d=json.load(sys.stdin); print('token verify:', d.get('success'), (d.get('result') or {}).get('status'), [e.get('message') for e in d.get('errors',[])])" || true
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/tokens/verify" | python3 -c "import json,sys; d=json.load(sys.stdin); print('account-token verify:', d.get('success'), (d.get('result') or {}).get('status'), [e.get('message') for e in d.get('errors',[])])" || true
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" | python3 -c "import json,sys; d=json.load(sys.stdin); print('workers list:', d.get('success'), [e.get('message') for e in d.get('errors',[])])" || true
+          echo "id len=${#CLOUDFLARE_ACCOUNT_ID} tok len=${#CLOUDFLARE_API_TOKEN}"
           echo "READY=1" >> $GITHUB_ENV
       - name: База D1
         if: env.READY == '1'
