@@ -65,7 +65,8 @@ h3.group{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(
 [data-collapse] > .head h2{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}
 [data-collapse] > .head h2::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .18s}
 [data-collapse].closed > .head h2::before{transform:rotate(-45deg)}
-[data-collapse].closed > :not(.head){display:none}
+[data-collapse].closed > :not(.head){display:none !important} /* важливо: balance() ставить display:grid прямо в елемент */
+[data-collapse].closed{align-self:start} /* згорнута картка не тягнеться до висоти сусідньої в ряду */
 [data-collapse].closed > .head{margin-bottom:0}
 [data-collapse].closed > .head > :not(h2){display:none}
 
