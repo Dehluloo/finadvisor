@@ -523,9 +523,9 @@ body{overscroll-behavior-y:none}
 .deep-top{display:flex;gap:12px;align-items:flex-start}.deep-top .dot{margin-top:9px;flex:none}
 .deep-top h3{margin:0 0 3px;font-size:19px;line-height:1.3}
 .deep-thesis{font-size:15px;line-height:1.6;margin:12px 0 16px}
-.deep-assets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:16px}
+.deep-assets{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}.deep-assets > .da{flex:1 1 250px;min-width:0}
 .da{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
-.da-h{display:flex;align-items:center;gap:8px}.da-h .stance{margin-left:auto;white-space:nowrap}
+.da-h{display:flex;align-items:center;gap:8px;min-width:0}.da-h .muted{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.da-h .stance{margin-left:auto;white-space:nowrap}
 .da-px{font-size:17px;font-weight:700;margin:4px 0 2px;font-variant-numeric:tabular-nums}
 .da-lv{display:flex;flex-direction:column;gap:1px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .da p{margin:7px 0 4px;font-size:13.5px;line-height:1.5}
